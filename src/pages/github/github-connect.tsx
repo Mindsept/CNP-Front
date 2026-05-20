@@ -45,6 +45,7 @@ export function GithubConnectPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Integrations"
+        icon={Github}
         title="Connect GitHub"
         description="Install the platform's GitHub App on your organization to import repositories and open Pull Requests."
         actions={

@@ -27,6 +27,7 @@ export function AuditLogPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="History"
+        icon={ScrollText}
         title="Audit log"
         description="Track every important action that happened on the platform."
       />
