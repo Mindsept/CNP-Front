@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { YamlViewer } from "@/components/common/yaml-viewer";
+import { Markdown } from "@/components/common/markdown";
 import { CiStatusBadge } from "@/components/common/status-badge";
 import { AdaptDialog } from "@/components/ci/adapt-dialog";
 import { CreatePrDialog } from "@/components/ci/create-pr-dialog";
@@ -429,10 +430,13 @@ export function RepositoryCiPage() {
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     Explanation
                   </p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
-                    {activeExplanation ||
-                      "No explanation was generated for this workflow."}
-                  </p>
+                  {activeExplanation ? (
+                    <Markdown className="mt-2">{activeExplanation}</Markdown>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      No explanation was generated for this workflow.
+                    </p>
+                  )}
                 </Card>
 
                 {pr ? (

@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/common/error-state";
 import { SectionCard } from "@/components/common/section-card";
 import { Card } from "@/components/ui/card";
 import { JobStatusBadge } from "@/components/common/status-badge";
-import { CodeBlock } from "@/components/common/code-block";
+import { YamlViewer } from "@/components/common/yaml-viewer";
 import { jobService } from "@/services/job.service";
 import { formatDate, formatRelative } from "@/lib/utils";
 import type { Job } from "@/types/job";
@@ -87,8 +87,8 @@ export function JobDetailPage() {
       </div>
 
       <SectionCard title="Payload" description="Input passed to the worker.">
-        <CodeBlock
-          code={JSON.stringify(job.payload ?? {}, null, 2)}
+        <YamlViewer
+          yaml={JSON.stringify(job.payload ?? {}, null, 2)}
           language="json"
           filename="payload.json"
         />
@@ -96,8 +96,8 @@ export function JobDetailPage() {
 
       {job.result ? (
         <SectionCard title="Result" description="Output produced by the worker.">
-          <CodeBlock
-            code={JSON.stringify(job.result, null, 2)}
+          <YamlViewer
+            yaml={JSON.stringify(job.result, null, 2)}
             language="json"
             filename="result.json"
           />

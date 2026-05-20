@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/errors";
 import type { Paginated } from "@/types/api";
 import type {
   AnalyzeRepositoryInput,
@@ -40,9 +41,16 @@ export const repositoryService = {
     );
   },
 
-  latestAnalysis(repositoryId: string): Promise<RepositoryAnalysis | null> {
-    return api.get<RepositoryAnalysis | null>(
-      `/repositories/${repositoryId}/analysis/latest`,
-    );
+  async latestAnalysis(repositoryId: string): Promise<RepositoryAnalysis | null> {
+    try {
+      return await api.get<RepositoryAnalysis>(
+        `/repositories/${repositoryId}/analysis/latest`,
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   },
 };
