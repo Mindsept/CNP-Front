@@ -64,6 +64,7 @@ export function GithubInstallationsPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Integrations"
+        icon={Github}
         title="GitHub installations"
         description="Pick an installation, then import any accessible repository into a project."
         actions={

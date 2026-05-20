@@ -11,11 +11,25 @@ interface MetricCardProps {
   className?: string;
 }
 
-const toneStyles: Record<NonNullable<MetricCardProps["tone"]>, string> = {
-  violet: "from-primary/30 to-transparent text-primary",
-  blue: "from-accent/30 to-transparent text-accent",
-  emerald: "from-success/30 to-transparent text-success",
-  amber: "from-warning/30 to-transparent text-warning",
+const toneGlow: Record<NonNullable<MetricCardProps["tone"]>, string> = {
+  violet: "from-primary/40 to-transparent",
+  blue: "from-accent/40 to-transparent",
+  emerald: "from-success/40 to-transparent",
+  amber: "from-warning/40 to-transparent",
+};
+
+const toneIcon: Record<NonNullable<MetricCardProps["tone"]>, string> = {
+  violet: "text-primary ring-primary/25 bg-primary/10",
+  blue: "text-accent ring-accent/25 bg-accent/10",
+  emerald: "text-success ring-success/25 bg-success/10",
+  amber: "text-warning ring-warning/25 bg-warning/10",
+};
+
+const toneBar: Record<NonNullable<MetricCardProps["tone"]>, string> = {
+  violet: "via-primary/60",
+  blue: "via-accent/60",
+  emerald: "via-success/60",
+  amber: "via-warning/60",
 };
 
 export function MetricCard({
@@ -27,19 +41,33 @@ export function MetricCard({
   className,
 }: MetricCardProps) {
   return (
-    <Card className={cn("relative overflow-hidden p-5", className)}>
+    <Card
+      className={cn(
+        "group relative overflow-hidden p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.6)]",
+        className,
+      )}
+    >
       <div
+        aria-hidden
         className={cn(
-          "pointer-events-none absolute -top-12 right-0 h-32 w-32 rounded-full bg-gradient-to-br opacity-50 blur-2xl",
-          toneStyles[tone],
+          "pointer-events-none absolute -top-16 -right-12 h-40 w-40 rounded-full bg-gradient-to-br opacity-50 blur-3xl transition-opacity duration-300 group-hover:opacity-80",
+          toneGlow[tone],
         )}
       />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent",
+          toneBar[tone],
+        )}
+      />
+
       <div className="relative flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {label}
           </p>
-          <p className="text-3xl font-semibold tracking-tight tabular-nums">
+          <p className="text-[32px] font-semibold leading-none tracking-tight tabular-nums">
             {value}
           </p>
           {hint ? (
@@ -48,15 +76,11 @@ export function MetricCard({
         </div>
         <div
           className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-md ring-1 ring-inset",
-            "bg-surface-elevated",
-            tone === "violet" && "text-primary ring-primary/30",
-            tone === "blue" && "text-accent ring-accent/30",
-            tone === "emerald" && "text-success ring-success/30",
-            tone === "amber" && "text-warning ring-warning/30",
+            "flex h-10 w-10 items-center justify-center rounded-lg ring-1 ring-inset transition-transform duration-200 group-hover:scale-105",
+            toneIcon[tone],
           )}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-[18px] w-[18px]" />
         </div>
       </div>
     </Card>

@@ -6,6 +6,7 @@ import {
   GitBranch,
   GitPullRequest,
   KeyRound,
+  LayoutDashboard,
   Microscope,
   Workflow,
 } from "lucide-react";
@@ -34,6 +35,7 @@ export function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Overview"
+        icon={LayoutDashboard}
         title={firstName ? `Welcome back, ${firstName}` : "Welcome back"}
         description="A real-time view of the projects, repositories and CI pipelines you onboarded on the platform."
         actions={
@@ -123,26 +125,34 @@ export function DashboardPage() {
                       description="Once you import a repository, events will show up here in real-time."
                     />
                   ) : (
-                    <ul className="divide-y divide-border/60">
-                      {s.recent_events.map((event, idx) => (
-                        <li
-                          key={`${event.type}-${idx}`}
-                          className="flex items-start gap-3 py-3"
-                        >
-                          <div className="mt-1 flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
-                            <ActivityIconFor type={event.type} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm text-foreground">
-                              {event.message}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              <span className="font-mono">{event.type}</span> ·{" "}
-                              {formatRelative(event.created_at)}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
+                    <ul className="-mx-2 space-y-0.5">
+                      {s.recent_events.map((event, idx) => {
+                        const tone = toneForEvent(event.type);
+                        return (
+                          <li
+                            key={`${event.type}-${idx}`}
+                            className="group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-elevated/60"
+                          >
+                            <div
+                              className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 ring-inset ${tone}`}
+                            >
+                              <ActivityIconFor type={event.type} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm text-foreground">
+                                {event.message}
+                              </p>
+                              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span className="rounded bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">
+                                  {event.type}
+                                </span>
+                                <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                                <span>{formatRelative(event.created_at)}</span>
+                              </p>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </SectionCard>
@@ -191,6 +201,15 @@ function ActivityIconFor({ type }: { type: string }) {
   return <Activity className="h-3.5 w-3.5" />;
 }
 
+function toneForEvent(type: string): string {
+  if (type.startsWith("ci.")) return "bg-primary/10 text-primary ring-primary/20";
+  if (type.includes("analyzed")) return "bg-accent/10 text-accent ring-accent/25";
+  if (type.includes("pr")) return "bg-success/10 text-success ring-success/25";
+  if (type.includes("repository"))
+    return "bg-warning/10 text-warning ring-warning/25";
+  return "bg-primary/10 text-primary ring-primary/20";
+}
+
 function QuickAction({
   to,
   icon: Icon,
@@ -203,13 +222,13 @@ function QuickAction({
   return (
     <Link
       to={to}
-      className="group flex items-center justify-between rounded-md border border-border bg-surface/40 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+      className="group relative flex items-center gap-3 rounded-lg border border-border bg-surface/40 px-3 py-2.5 text-sm text-foreground transition-all hover:-translate-y-px hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-[0_6px_20px_-12px_rgba(168,85,247,0.5)]"
     >
-      <span className="flex items-center gap-2.5">
-        <Icon className="h-4 w-4 text-primary" />
-        {label}
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 transition-colors group-hover:bg-primary/15 group-hover:ring-primary/40">
+        <Icon className="h-4 w-4" />
       </span>
-      <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+      <span className="flex-1 truncate font-medium">{label}</span>
+      <span className="text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-primary">
         →
       </span>
     </Link>
