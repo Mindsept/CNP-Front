@@ -65,6 +65,7 @@ export function GithubInstallationsPage() {
       <PageHeader
         eyebrow="Integrations"
         icon={Github}
+        back={{ to: "/github", label: "GitHub" }}
         title="GitHub installations"
         description="Pick an installation, then import any accessible repository into a project."
         actions={

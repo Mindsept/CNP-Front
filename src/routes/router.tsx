@@ -12,6 +12,7 @@ import { ProjectDetailPage } from "@/pages/projects/project-detail";
 import { ProjectSettingsPage } from "@/pages/projects/project-settings";
 import { GithubConnectPage } from "@/pages/github/github-connect";
 import { GithubInstallationsPage } from "@/pages/github/github-installations";
+import { GithubCallbackPage } from "@/pages/github/github-callback";
 import { RepositoriesListPage } from "@/pages/repositories/repositories-list";
 import { RepositoryDetailPage } from "@/pages/repositories/repository-detail";
 import { RepositoryAnalysisPage } from "@/pages/repositories/repository-analysis";
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
             path: "/github/installations",
             element: <GithubInstallationsPage />,
           },
+          { path: "/github/callback", element: <GithubCallbackPage /> },
 
           {
             path: "/repositories/:repositoryId",

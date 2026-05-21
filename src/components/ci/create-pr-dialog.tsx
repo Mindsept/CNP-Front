@@ -10,12 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { GitPullRequest } from "lucide-react";
 
 interface CreatePrDialogProps {
   open: boolean;
   defaultBranch: string;
+  syncSecretsDefault?: boolean;
+  syncSecretsAvailable?: boolean;
   loading?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: {
@@ -24,6 +27,7 @@ interface CreatePrDialogProps {
     commit_message: string;
     pull_request_title: string;
     pull_request_body: string;
+    sync_secrets_to_github?: boolean;
   }) => void;
 }
 
@@ -38,6 +42,8 @@ const defaults = {
 export function CreatePrDialog({
   open,
   defaultBranch,
+  syncSecretsDefault,
+  syncSecretsAvailable,
   loading,
   onOpenChange,
   onSubmit,
@@ -47,6 +53,7 @@ export function CreatePrDialog({
   const [commitMessage, setCommitMessage] = useState(defaults.commit_message);
   const [prTitle, setPrTitle] = useState(defaults.pull_request_title);
   const [prBody, setPrBody] = useState(defaults.pull_request_body);
+  const [syncSecrets, setSyncSecrets] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -55,8 +62,9 @@ export function CreatePrDialog({
       setCommitMessage(defaults.commit_message);
       setPrTitle(defaults.pull_request_title);
       setPrBody(defaults.pull_request_body);
+      setSyncSecrets(Boolean(syncSecretsDefault));
     }
-  }, [open, defaultBranch]);
+  }, [open, defaultBranch, syncSecretsDefault]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -66,6 +74,7 @@ export function CreatePrDialog({
       commit_message: commitMessage.trim(),
       pull_request_title: prTitle.trim(),
       pull_request_body: prBody.trim(),
+      sync_secrets_to_github: syncSecrets,
     });
   }
 
@@ -135,6 +144,25 @@ export function CreatePrDialog({
               onChange={(e) => setPrBody(e.target.value)}
             />
           </div>
+
+          {syncSecretsAvailable ? (
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-surface/60 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="sync-secrets" className="cursor-pointer">
+                  Sync mapped secrets to GitHub Actions
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Project secret values are encrypted with GitHub's public key
+                  before being stored as repository Actions secrets.
+                </p>
+              </div>
+              <Switch
+                id="sync-secrets"
+                checked={syncSecrets}
+                onCheckedChange={setSyncSecrets}
+              />
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button

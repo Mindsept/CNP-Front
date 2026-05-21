@@ -107,6 +107,7 @@ export function ProjectSettingsPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={`/${project.slug}`}
+        back={{ to: `/projects/${id}`, label: project.name }}
         title="Project settings"
         description="Update your project metadata and manage team access."
       />

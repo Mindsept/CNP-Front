@@ -1,5 +1,12 @@
 import type { LucideIcon } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
+interface BackProps {
+  to?: string;
+  label?: string;
+}
 
 interface PageHeaderProps {
   title: React.ReactNode;
@@ -7,6 +14,7 @@ interface PageHeaderProps {
   actions?: React.ReactNode;
   eyebrow?: React.ReactNode;
   icon?: LucideIcon;
+  back?: BackProps;
   className?: string;
 }
 
@@ -16,6 +24,7 @@ export function PageHeader({
   actions,
   eyebrow,
   icon: Icon,
+  back,
   className,
 }: PageHeaderProps) {
   return (
@@ -29,6 +38,8 @@ export function PageHeader({
             "radial-gradient(60% 80% at 0% 0%, rgba(168,85,247,0.10), transparent 60%), radial-gradient(50% 70% at 100% 0%, rgba(56,189,248,0.07), transparent 60%)",
         }}
       />
+
+      {back ? <BackLink {...back} /> : null}
 
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div className="flex items-start gap-4">
@@ -65,5 +76,29 @@ export function PageHeader({
       {/* Gradient separator */}
       <div className="mt-7 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
     </div>
+  );
+}
+
+function BackLink({ to, label }: BackProps) {
+  const navigate = useNavigate();
+  const text = label ? `Back to ${label}` : "Back";
+
+  const className =
+    "group mb-4 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 -ml-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-elevated hover:text-foreground";
+
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+        <span>{text}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => navigate(-1)} className={className}>
+      <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+      <span>{text}</span>
+    </button>
   );
 }

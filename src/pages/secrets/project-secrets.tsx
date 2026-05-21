@@ -78,6 +78,11 @@ export function ProjectSecretsPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={projectQuery.data ? `/${projectQuery.data.slug}` : "—"}
+        icon={KeyRound}
+        back={{
+          to: `/projects/${id}`,
+          label: projectQuery.data?.name ?? "project",
+        }}
         title="Secrets"
         description="Project-scoped secrets. Values are never returned by the API once saved."
         actions={

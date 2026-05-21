@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Microscope, Sparkles } from "lucide-react";
@@ -91,18 +91,11 @@ export function RepositoryAnalysisPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={
-          repoQuery.data ? (
-            <Link
-              to={`/repositories/${id}`}
-              className="hover:text-foreground"
-            >
-              ← {repoQuery.data.full_name}
-            </Link>
-          ) : (
-            "Repository"
-          )
-        }
+        eyebrow={repoQuery.data?.full_name ?? "Repository"}
+        back={{
+          to: `/repositories/${id}`,
+          label: repoQuery.data?.full_name ?? "repository",
+        }}
         title="Analysis"
         description="Detect the stack, identify tests and gather signals required to generate a CI workflow."
         actions={

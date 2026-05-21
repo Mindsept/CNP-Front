@@ -34,6 +34,11 @@ export function RepositoriesListPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={projectQuery.data ? `/${projectQuery.data.slug}` : "—"}
+        icon={GitBranch}
+        back={{
+          to: `/projects/${id}`,
+          label: projectQuery.data?.name ?? "project",
+        }}
         title="Repositories"
         description="Imported repositories live here. Open one to analyze its stack and generate a CI workflow."
         actions={

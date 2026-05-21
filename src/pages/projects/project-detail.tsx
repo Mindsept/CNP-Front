@@ -72,6 +72,7 @@ export function ProjectDetailPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={`/${project.slug}`}
+        back={{ to: "/projects", label: "Projects" }}
         title={project.name}
         description={project.description ?? "No description provided yet."}
         actions={

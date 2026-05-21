@@ -10,6 +10,36 @@ export type CiPipelineStatus =
 export type CiProvider = "github_actions";
 export type CiGenerationMode = "deterministic" | "ai_assisted";
 
+export interface EnvVarRequirement {
+  name: string;
+  source: string;
+  required: boolean;
+  sensitive: boolean;
+  default_value_present: boolean;
+}
+
+export interface CiSecretMapping {
+  env_name: string;
+  project_secret_key: string;
+  github_secret_name?: string | null;
+}
+
+export interface CiResolvedSecretMapping {
+  env_name: string;
+  project_secret_key: string;
+  github_secret_name: string;
+  project_secret_configured: boolean;
+}
+
+export interface CiRequirements {
+  repository_id: string;
+  detected_env_vars: EnvVarRequirement[];
+  required_env_vars: string[];
+  configured_project_secrets: string[];
+  suggested_mappings: CiResolvedSecretMapping[];
+  missing_project_secrets: string[];
+}
+
 export interface CiPipelinePreviewInput {
   mode?: CiGenerationMode;
   provider?: CiProvider;
@@ -17,6 +47,8 @@ export interface CiPipelinePreviewInput {
   include_docker_push_on_main?: boolean;
   registry?: string;
   explain_with_ai?: boolean;
+  auto_map_project_secrets?: boolean;
+  secret_mappings?: CiSecretMapping[];
 }
 
 export interface CiPipelinePreview {
@@ -28,6 +60,10 @@ export interface CiPipelinePreview {
   generated_yaml: string;
   explanation: string;
   required_secrets: string[];
+  detected_env_vars: EnvVarRequirement[];
+  secret_mappings: CiResolvedSecretMapping[];
+  missing_project_secrets: string[];
+  github_secrets_to_sync: string[];
 }
 
 export interface CiAdaptInput {
@@ -68,6 +104,7 @@ export interface CiCreatePrInput {
   commit_message: string;
   pull_request_title: string;
   pull_request_body: string;
+  sync_secrets_to_github?: boolean;
 }
 
 export interface CiCreatePrResponse {
@@ -76,6 +113,8 @@ export interface CiCreatePrResponse {
   pull_request_url: string;
   pull_request_number: number;
   branch_name: string;
+  synced_secrets: string[];
+  missing_project_secrets: string[];
 }
 
 export interface CiPipelineListItem {

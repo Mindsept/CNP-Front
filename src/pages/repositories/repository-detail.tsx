@@ -64,6 +64,12 @@ export function RepositoryDetailPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={repo.provider ?? "Repository"}
+        back={{
+          to: repo.project_id
+            ? `/projects/${repo.project_id}/repositories`
+            : undefined,
+          label: "repositories",
+        }}
         title={repo.full_name}
         description={`Default branch: ${repo.default_branch}`}
         actions={

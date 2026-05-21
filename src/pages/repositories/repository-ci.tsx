@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ import type {
   CiAdaptResponse,
   CiCreatePrResponse,
   CiPipelinePreview,
+  CiSecretMapping,
 } from "@/types/ci";
 
 export function RepositoryCiPage() {
@@ -63,10 +64,19 @@ export function RepositoryCiPage() {
     enabled: Boolean(projectId),
   });
 
+  const hasAnalysis = Boolean(analysisQuery.data);
+
+  const requirementsQuery = useQuery({
+    queryKey: ["repository", id, "ci", "requirements"],
+    queryFn: () => ciService.requirements(id),
+    enabled: hasAnalysis,
+  });
+
   const [includeDocker, setIncludeDocker] = useState(true);
   const [includePush, setIncludePush] = useState(true);
   const [explainAi, setExplainAi] = useState(true);
   const [registry, setRegistry] = useState("ghcr.io");
+  const [secretMappings, setSecretMappings] = useState<CiSecretMapping[]>([]);
 
   const [preview, setPreview] = useState<CiPipelinePreview | null>(null);
   const [adapted, setAdapted] = useState<CiAdaptResponse | null>(null);
@@ -74,6 +84,26 @@ export function RepositoryCiPage() {
   const [pr, setPr] = useState<CiCreatePrResponse | null>(null);
   const [adaptOpen, setAdaptOpen] = useState(false);
   const [prOpen, setPrOpen] = useState(false);
+
+  useEffect(() => {
+    const requirements = requirementsQuery.data;
+    if (!requirements) return;
+    const suggested = new Map(
+      requirements.suggested_mappings.map((m) => [m.env_name, m]),
+    );
+    setSecretMappings(
+      requirements.detected_env_vars
+        .filter((envVar) => envVar.required)
+        .map((envVar) => {
+          const mapping = suggested.get(envVar.name);
+          return {
+            env_name: envVar.name,
+            project_secret_key: mapping?.project_secret_key ?? envVar.name,
+            github_secret_name: mapping?.github_secret_name ?? envVar.name,
+          };
+        }),
+    );
+  }, [requirementsQuery.data]);
 
   const previewMutation = useMutation({
     mutationFn: () =>
@@ -84,6 +114,10 @@ export function RepositoryCiPage() {
         include_docker_push_on_main: includePush,
         registry,
         explain_with_ai: explainAi,
+        auto_map_project_secrets: true,
+        secret_mappings: secretMappings.filter(
+          (m) => m.env_name && m.project_secret_key,
+        ),
       }),
     onSuccess: (data) => {
       setPreview(data);
@@ -142,27 +176,46 @@ export function RepositoryCiPage() {
     () => new Set((secretsQuery.data?.items ?? []).map((s) => s.key)),
     [secretsQuery.data],
   );
-  const missingSecrets = requiredSecrets.filter(
-    (k) => !existingSecretKeys.has(k),
-  );
+  const missingSecrets = (
+    preview?.missing_project_secrets ??
+    requiredSecrets.filter((k) => !existingSecretKeys.has(k))
+  ).filter((key, index, keys) => keys.indexOf(key) === index);
+  const syncSecretsAvailable = (preview?.github_secrets_to_sync?.length ?? 0) > 0;
+  const syncSecretsDefault =
+    syncSecretsAvailable && missingSecrets.length === 0;
 
-  const hasAnalysis = Boolean(analysisQuery.data);
+  const configuredForRequiredSecret = (githubSecretName: string) => {
+    const mapping = preview?.secret_mappings?.find(
+      (item) => item.github_secret_name === githubSecretName,
+    );
+    if (mapping) return mapping.project_secret_configured;
+    return existingSecretKeys.has(githubSecretName);
+  };
+
+  const updateSecretMapping = (
+    envName: string,
+    field: "project_secret_key" | "github_secret_name",
+    value: string,
+  ) => setSecretMappings((current) =>
+    current.map((mapping) =>
+      mapping.env_name === envName
+        ? {
+            ...mapping,
+            [field]: value.toUpperCase().replace(/[^A-Z0-9_]/g, "_"),
+          }
+        : mapping,
+    ),
+  );
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={
-          repoQuery.data ? (
-            <Link
-              to={`/repositories/${id}`}
-              className="hover:text-foreground"
-            >
-              ← {repoQuery.data.full_name}
-            </Link>
-          ) : (
-            "Repository"
-          )
-        }
+        eyebrow={repoQuery.data?.full_name ?? "Repository"}
+        icon={Workflow}
+        back={{
+          to: `/repositories/${id}`,
+          label: repoQuery.data?.full_name ?? "repository",
+        }}
         title="CI workflow"
         description="Generate, adapt and ship a production-ready GitHub Actions workflow."
         actions={
@@ -293,20 +346,25 @@ export function RepositoryCiPage() {
                 </p>
               ) : (
                 <ul className="space-y-1.5 text-sm">
-                  {requiredSecrets.map((key) => {
-                    const has = existingSecretKeys.has(key);
-                    return (
-                      <li
-                        key={key}
-                        className="flex items-center justify-between gap-2"
+                  {requiredSecrets.map((key) => (
+                    <li
+                      key={key}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="font-mono text-xs">{key}</span>
+                      <Badge
+                        variant={
+                          configuredForRequiredSecret(key)
+                            ? "success"
+                            : "warning"
+                        }
                       >
-                        <span className="font-mono text-xs">{key}</span>
-                        <Badge variant={has ? "success" : "warning"}>
-                          {has ? "Configured" : "Missing"}
-                        </Badge>
-                      </li>
-                    );
-                  })}
+                        {configuredForRequiredSecret(key)
+                          ? "Configured"
+                          : "Missing"}
+                      </Badge>
+                    </li>
+                  ))}
                 </ul>
               )}
               {projectId ? (
@@ -319,6 +377,121 @@ export function RepositoryCiPage() {
               ) : null}
             </Card>
           </div>
+
+          {requirementsQuery.data?.detected_env_vars.length ? (
+            <SectionCard
+              title="Environment secrets"
+              description="Detected variables from example env files can be mapped to project secrets before generating CI."
+            >
+              <div className="space-y-4">
+                <div className="grid gap-3">
+                  {requirementsQuery.data.detected_env_vars.map((envVar) => {
+                    const mapping = secretMappings.find(
+                      (item) => item.env_name === envVar.name,
+                    );
+                    return (
+                      <Card key={envVar.name} className="p-4">
+                        <div className="grid gap-3 lg:grid-cols-[1fr_220px_220px]">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-sm font-medium">
+                                {envVar.name}
+                              </span>
+                              <Badge
+                                variant={envVar.required ? "warning" : "muted"}
+                              >
+                                {envVar.required ? "Required" : "Optional"}
+                              </Badge>
+                              {envVar.sensitive ? (
+                                <Badge variant="secondary">Sensitive</Badge>
+                              ) : null}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Source{" "}
+                              <span className="font-mono">{envVar.source}</span>
+                            </p>
+                          </div>
+
+                          {envVar.required ? (
+                            <>
+                              <div className="space-y-1.5">
+                                <Label
+                                  htmlFor={`project-secret-${envVar.name}`}
+                                  className="text-xs"
+                                >
+                                  Project secret
+                                </Label>
+                                <Input
+                                  id={`project-secret-${envVar.name}`}
+                                  value={mapping?.project_secret_key ?? envVar.name}
+                                  onChange={(e) =>
+                                    updateSecretMapping(
+                                      envVar.name,
+                                      "project_secret_key",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="font-mono text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label
+                                  htmlFor={`github-secret-${envVar.name}`}
+                                  className="text-xs"
+                                >
+                                  GitHub secret
+                                </Label>
+                                <Input
+                                  id={`github-secret-${envVar.name}`}
+                                  value={mapping?.github_secret_name ?? envVar.name}
+                                  onChange={(e) =>
+                                    updateSecretMapping(
+                                      envVar.name,
+                                      "github_secret_name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="font-mono text-xs"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div className="lg:col-span-2">
+                              <p className="text-sm text-muted-foreground">
+                                This variable has a default value and is not
+                                mapped to a secret automatically.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {requirementsQuery.data.missing_project_secrets.length > 0 ? (
+                  <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 text-sm">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">
+                        Project secrets missing
+                      </p>
+                      <p className="text-muted-foreground">
+                        Add{" "}
+                        <span className="font-mono">
+                          {requirementsQuery.data.missing_project_secrets.join(
+                            ", ",
+                          )}
+                        </span>{" "}
+                        in project secrets or adjust the mapping before opening
+                        the Pull Request.
+                      </p>
+                    </div>
+                  </Card>
+                ) : null}
+              </div>
+            </SectionCard>
+          ) : null}
 
           {missingSecrets.length > 0 && preview ? (
             <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 text-sm">
@@ -495,6 +668,8 @@ export function RepositoryCiPage() {
         open={prOpen}
         defaultBranch={repoQuery.data?.default_branch ?? "main"}
         loading={createPrMutation.isPending}
+        syncSecretsAvailable={syncSecretsAvailable}
+        syncSecretsDefault={syncSecretsDefault}
         onOpenChange={setPrOpen}
         onSubmit={(input) => createPrMutation.mutate(input)}
       />

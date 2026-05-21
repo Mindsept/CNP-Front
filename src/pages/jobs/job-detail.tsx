@@ -44,6 +44,7 @@ export function JobDetailPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Background job"
+        back={{ label: "previous page" }}
         title={
           <span className="flex items-center gap-3">
             <span className="font-mono text-base">{job.id.slice(0, 8)}</span>

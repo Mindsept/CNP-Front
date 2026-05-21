@@ -12,9 +12,16 @@ import type {
   CiPipelineListItem,
   CiPipelinePreview,
   CiPipelinePreviewInput,
+  CiRequirements,
 } from "@/types/ci";
 
 export const ciService = {
+  requirements(repositoryId: string): Promise<CiRequirements> {
+    return api.get<CiRequirements>(
+      `/repositories/${repositoryId}/ci/requirements`,
+    );
+  },
+
   preview(
     repositoryId: string,
     input: CiPipelinePreviewInput,
