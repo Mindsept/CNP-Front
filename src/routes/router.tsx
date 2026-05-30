@@ -19,7 +19,7 @@ import { RepositoryAnalysisPage } from "@/pages/repositories/repository-analysis
 import { RepositoryCiPage } from "@/pages/repositories/repository-ci";
 import { RepositoryCdPage } from "@/pages/repositories/repository-cd";
 import { ProjectSecretsPage } from "@/pages/secrets/project-secrets";
-import { AdminCloudTargetsPage } from "@/pages/cloud-targets/admin-cloud-targets";
+import { PlatformInfrastructurePage } from "@/pages/admin/platform-infrastructure";
 import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
@@ -56,8 +56,12 @@ export const router = createBrowserRouter([
           },
 
           {
+            path: "/admin/infrastructure",
+            element: <PlatformInfrastructurePage />,
+          },
+          {
             path: "/admin/cloud-targets",
-            element: <AdminCloudTargetsPage />,
+            element: <Navigate to="/admin/infrastructure" replace />,
           },
 
           { path: "/github", element: <GithubConnectPage /> },

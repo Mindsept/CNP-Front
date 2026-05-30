@@ -37,6 +37,8 @@ export interface CdRequirements {
   detected_env_vars: CdEnvVarRequirement[];
   required_env_vars: string[];
   configured_cd_project_secrets: string[];
+  /** Effective configured CD secret keys (project + global registry/cloud node). */
+  configured_cd_secret_keys?: string[];
   required_cloud_secret_names: string[];
   suggested_mappings: CdSuggestedMapping[];
   missing_project_secrets: string[];
@@ -118,4 +120,59 @@ export interface CdPipelineListItem {
 
 export interface CdPipelineListResponse {
   items: CdPipelineListItem[];
+}
+
+export type DeploymentStatus =
+  | "not_deployed"
+  | "unknown"
+  | "pending"
+  | "deployed"
+  | "failed";
+
+export interface CdDeploymentDetails {
+  service_type?: string;
+  cluster_ip?: string;
+  ports?: unknown[];
+  load_balancer_ingress?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface CdDeploymentStatus {
+  cd_pipeline_id: string;
+  repository_id: string;
+  cloud_target_id: string;
+  status: CdPipelineStatus;
+  deployment_status: DeploymentStatus;
+  app_name: string;
+  namespace: string;
+  image: string;
+  image_tag: string;
+  external_ip?: string | null;
+  public_url?: string | null;
+  last_deployment_checked_at?: string | null;
+  deployment_details?: CdDeploymentDetails | null;
+}
+
+export interface ProjectDeploymentItem {
+  repository_id: string;
+  repository_full_name: string;
+  repository_name: string;
+  latest_cd_pipeline_id: string | null;
+  cloud_target_id?: string | null;
+  cloud_target_name?: string | null;
+  cloud_target_environment?: string | null;
+  app_name?: string | null;
+  pipeline_status?: CdPipelineStatus | null;
+  deployment_status: DeploymentStatus;
+  namespace?: string | null;
+  image?: string | null;
+  image_tag?: string | null;
+  external_ip?: string | null;
+  public_url?: string | null;
+  last_deployment_checked_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ProjectDeploymentsResponse {
+  items: ProjectDeploymentItem[];
 }

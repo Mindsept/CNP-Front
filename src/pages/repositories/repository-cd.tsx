@@ -9,6 +9,7 @@ import {
   ExternalLink,
   GitPullRequest,
   KeyRound,
+  RefreshCw,
   Rocket,
   ShieldAlert,
 } from "lucide-react";
@@ -39,9 +40,16 @@ import {
 } from "@/components/ui/tabs";
 import { YamlViewer } from "@/components/common/yaml-viewer";
 import { CdCreatePrDialog } from "@/components/cd/cd-create-pr-dialog";
+import {
+  DeploymentStatusBadge,
+  deploymentStatusMeta,
+} from "@/components/cd/deployment-status-badge";
+import { AzureLogo, GhcrLogo } from "@/components/common/provider-logos";
 import { repositoryService } from "@/services/repository.service";
 import { cdService } from "@/services/cd.service";
+import { containerRegistryService } from "@/services/container-registry.service";
 import { useToastError } from "@/hooks/use-toast-error";
+import { ApiError } from "@/lib/errors";
 import { formatRelative } from "@/lib/utils";
 import type {
   CdCreatePrResponse,
@@ -93,6 +101,16 @@ export function RepositoryCdPage() {
     queryFn: () => cdService.list(id),
   });
 
+  const registriesQuery = useQuery({
+    queryKey: ["container-registries"],
+    queryFn: () => containerRegistryService.list(),
+  });
+  const defaultRegistry =
+    registriesQuery.data?.items.find((r) => r.is_default) ??
+    registriesQuery.data?.items[0] ??
+    null;
+  const hasSharedRegistry = Boolean(defaultRegistry);
+
   const [cloudTargetId, setCloudTargetId] = useState<string>("");
   const [appName, setAppName] = useState("");
   const [image, setImage] = useState("");
@@ -102,7 +120,8 @@ export function RepositoryCdPage() {
   const [serviceType, setServiceType] = useState<CdServiceType>("LoadBalancer");
   const [kubeconfigStrategy, setKubeconfigStrategy] =
     useState<CdKubeconfigStrategy>("secret");
-  const [includeImagePullSecret, setIncludeImagePullSecret] = useState(false);
+  // Default ON: private GHCR packages need an image pull secret.
+  const [includeImagePullSecret, setIncludeImagePullSecret] = useState(true);
   const [imagePullSecretName, setImagePullSecretName] =
     useState("ghcr-pull-secret");
   const [autoMap, setAutoMap] = useState(true);
@@ -197,10 +216,72 @@ export function RepositoryCdPage() {
     onError: (err) => onError(err, "Could not open the Pull Request"),
   });
 
+  // A pipeline can only have a deployment once its PR is created.
+  const deployablePipelineId = useMemo(() => {
+    const items = pipelinesQuery.data?.items ?? [];
+    return items.find((p) => p.status === "pr_created")?.id ?? null;
+  }, [pipelinesQuery.data]);
+
+  const deploymentQueryKey = [
+    "repository",
+    id,
+    "cd",
+    deployablePipelineId,
+    "deployment",
+  ];
+
+  const deploymentQuery = useQuery({
+    queryKey: deploymentQueryKey,
+    queryFn: () => cdService.deployment(id, deployablePipelineId!),
+    enabled: Boolean(deployablePipelineId),
+  });
+
+  const refreshDeploymentMutation = useMutation({
+    mutationFn: () => cdService.refreshDeployment(id, deployablePipelineId!),
+    onSuccess: (data) => {
+      qc.setQueryData(deploymentQueryKey, data);
+      if (data.deployment_status === "pending") {
+        toast.message(
+          "Deployment exists, waiting for external LoadBalancer IP.",
+        );
+      } else if (data.deployment_status === "deployed") {
+        toast.success("Deployment is live");
+      } else {
+        toast.success("Deployment status refreshed");
+      }
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error(
+          "Create and merge the CD PR before refreshing deployment status.",
+        );
+        return;
+      }
+      onError(err, "Could not refresh deployment status");
+    },
+  });
+
   const requirements = requirementsQuery.data;
   const projectId = repoQuery.data?.project_id;
+  const deployment = deploymentQuery.data;
 
   const hasCloudTargets = (requirements?.cloud_targets.length ?? 0) > 0;
+
+  // Effective configured CD secrets (project + global registry/cloud node).
+  const configuredCdKeys = useMemo(
+    () =>
+      new Set(
+        requirements?.configured_cd_secret_keys ??
+          requirements?.configured_cd_project_secrets ??
+          [],
+      ),
+    [requirements],
+  );
+  const isCdSecretConfigured = (key: string) => {
+    // AZURE_* come from the global cloud node; GHCR_TOKEN from the shared registry.
+    if (hasSharedRegistry && key === "GHCR_TOKEN") return true;
+    return configuredCdKeys.has(key);
+  };
 
   const filesByPath = useMemo(() => {
     const map = new Map<string, string>();
@@ -276,7 +357,19 @@ export function RepositoryCdPage() {
                     <SelectContent>
                       {requirements!.cloud_targets.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          {t.name} · {t.cluster_name} ({t.region})
+                          <span className="flex items-center gap-2">
+                            {t.provider === "azure" ? (
+                              <AzureLogo className="h-3.5 w-3.5 shrink-0" />
+                            ) : null}
+                            <span>
+                              {t.name} · {t.cluster_name} ({t.region})
+                            </span>
+                            {t.project_id === null ? (
+                              <Badge variant="info" className="ml-1">
+                                Global
+                              </Badge>
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -461,23 +554,22 @@ export function RepositoryCdPage() {
                       </span>
                       <Badge
                         variant={
-                          requirements!.configured_cd_project_secrets.includes(
-                            k,
-                          )
-                            ? "success"
-                            : "warning"
+                          isCdSecretConfigured(k) ? "success" : "warning"
                         }
                         className="shrink-0"
                       >
-                        {requirements!.configured_cd_project_secrets.includes(
-                          k,
-                        )
-                          ? "Configured"
-                          : "Missing"}
+                        {isCdSecretConfigured(k) ? "Configured" : "Missing"}
                       </Badge>
                     </li>
                   ))}
                 </ul>
+                {hasSharedRegistry ? (
+                  <p className="flex items-start gap-1.5 text-[11px] text-success">
+                    <GhcrLogo className="mt-0.5 h-3 w-3 shrink-0" />
+                    Shared registry configured · {defaultRegistry!.auth_secret_name}{" "}
+                    synced from the platform.
+                  </p>
+                ) : null}
                 {projectId ? (
                   <Button size="sm" variant="outline" asChild className="w-full">
                     <Link to={`/projects/${projectId}/secrets?env=cd`}>
@@ -819,6 +911,123 @@ export function RepositoryCdPage() {
             </div>
           )}
 
+          {deployablePipelineId ? (
+            <SectionCard
+              title="Deployment"
+              description="Live status of this repository on the AKS cluster. Deployment happens after the CD PR is merged to main."
+              actions={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => refreshDeploymentMutation.mutate()}
+                  loading={refreshDeploymentMutation.isPending}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh deployment status
+                </Button>
+              }
+            >
+              {deploymentQuery.isLoading ? (
+                <LoadingState rows={1} />
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <DeploymentStatusBadge
+                      status={deployment?.deployment_status ?? "unknown"}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {
+                        deploymentStatusMeta(
+                          deployment?.deployment_status ?? "unknown",
+                        ).hint
+                      }
+                    </span>
+                    {deployment?.last_deployment_checked_at ? (
+                      <span className="text-xs text-muted-foreground">
+                        · checked{" "}
+                        {formatRelative(deployment.last_deployment_checked_at)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {deployment ? (
+                    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                      <DeployKV label="App" value={deployment.app_name} mono />
+                      <DeployKV
+                        label="Namespace"
+                        value={deployment.namespace}
+                        mono
+                      />
+                      <DeployKV
+                        label="Image"
+                        value={`${deployment.image}:${deployment.image_tag}`}
+                        mono
+                      />
+                      {deployment.external_ip ? (
+                        <DeployKV
+                          label="External IP"
+                          value={deployment.external_ip}
+                          mono
+                        />
+                      ) : null}
+                      {deployment.deployment_details?.service_type ? (
+                        <DeployKV
+                          label="Service type"
+                          value={deployment.deployment_details.service_type}
+                          mono
+                        />
+                      ) : null}
+                      {deployment.deployment_details?.cluster_ip ? (
+                        <DeployKV
+                          label="Cluster IP"
+                          value={deployment.deployment_details.cluster_ip}
+                          mono
+                        />
+                      ) : null}
+                    </dl>
+                  ) : null}
+
+                  {deployment?.deployment_status === "deployed" &&
+                  deployment.public_url ? (
+                    <Button variant="outline" asChild>
+                      <a
+                        href={deployment.public_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Open deployed app
+                      </a>
+                    </Button>
+                  ) : deployment?.deployment_status === "pending" ? (
+                    <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                      <p className="text-muted-foreground">
+                        Deployment exists, waiting for external LoadBalancer IP.
+                        Refresh again in a moment.
+                      </p>
+                    </Card>
+                  ) : deployment?.deployment_status === "failed" ? (
+                    <Card className="min-w-0 overflow-hidden border-destructive/30 bg-destructive/5 p-4 text-sm">
+                      <p className="font-medium text-destructive">
+                        Deployment failed
+                      </p>
+                      {deployment.deployment_details ? (
+                        <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-border bg-surface/60 p-3 font-mono text-[11px] text-foreground/90">
+                          {JSON.stringify(
+                            deployment.deployment_details,
+                            null,
+                            2,
+                          )}
+                        </pre>
+                      ) : null}
+                    </Card>
+                  ) : null}
+                </div>
+              )}
+            </SectionCard>
+          ) : null}
+
           <SectionCard
             title="CD history"
             description="Every preview generated for this repository."
@@ -955,6 +1164,32 @@ function StepLine({ done, label }: { done: boolean; label: string }) {
         }`}
       />
       <span className={done ? "text-foreground" : ""}>{label}</span>
+    </div>
+  );
+}
+
+function DeployKV({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <dt className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd
+        className={`leading-snug text-foreground ${
+          mono ? "break-all font-mono text-xs" : "text-sm"
+        }`}
+        title={value}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

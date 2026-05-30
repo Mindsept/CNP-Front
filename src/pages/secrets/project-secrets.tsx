@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { KeyRound, Plus, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
@@ -33,6 +33,7 @@ import {
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { secretService } from "@/services/secret.service";
 import { projectService } from "@/services/project.service";
+import { containerRegistryService } from "@/services/container-registry.service";
 import { useToastError } from "@/hooks/use-toast-error";
 import { formatRelative } from "@/lib/utils";
 import type { ProjectSecret } from "@/types/secret";
@@ -76,10 +77,21 @@ export function ProjectSecretsPage() {
     queryFn: () => secretService.list(id),
   });
 
+  const registriesQuery = useQuery({
+    queryKey: ["container-registries"],
+    queryFn: () => containerRegistryService.list(),
+  });
+  const defaultRegistry =
+    registriesQuery.data?.items.find((r) => r.is_default) ??
+    registriesQuery.data?.items[0] ??
+    null;
+  const hasSharedRegistry = Boolean(defaultRegistry);
+
   const filtered = (secretsQuery.data?.items ?? []).filter(
     (s) => s.environment === environment,
   );
-  const hasGhcrToken = filtered.some((s) => s.key === RECOMMENDED);
+  const hasProjectGhcrToken = filtered.some((s) => s.key === RECOMMENDED);
+  const hasGhcrToken = hasProjectGhcrToken || hasSharedRegistry;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [toDelete, setToDelete] = useState<ProjectSecret | null>(null);
@@ -132,8 +144,41 @@ export function ProjectSecretsPage() {
       </div>
 
       {(environment === "ci" || environment === "cd") &&
-      !hasGhcrToken &&
-      !secretsQuery.isLoading ? (
+      hasSharedRegistry ? (
+        <Card className="flex items-start gap-3 border-success/30 bg-success/5 p-4 text-sm">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <div className="flex-1">
+            <p className="font-medium text-foreground">
+              Shared registry configured
+            </p>
+            <p className="text-muted-foreground">
+              {RECOMMENDED} is managed globally through the platform registry.
+              You do not need to add it as a project secret unless you want a
+              project-specific override.
+            </p>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              <span className="font-mono text-foreground/80">
+                {defaultRegistry!.registry_url}
+              </span>
+              {defaultRegistry!.namespace ? (
+                <>
+                  {" · "}
+                  <span className="font-mono text-foreground/80">
+                    {defaultRegistry!.namespace}
+                  </span>
+                </>
+              ) : null}
+              {" · "}
+              <span className="font-mono text-foreground/80">
+                {defaultRegistry!.auth_secret_name}
+              </span>
+            </p>
+          </div>
+        </Card>
+      ) : (environment === "ci" || environment === "cd") &&
+        !hasGhcrToken &&
+        !secretsQuery.isLoading &&
+        !registriesQuery.isLoading ? (
         <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div className="flex-1">
@@ -218,7 +263,9 @@ export function ProjectSecretsPage() {
         open={createOpen}
         defaultEnvironment={environment}
         defaultKey={
-          (environment === "ci" || environment === "cd") && !hasGhcrToken
+          (environment === "ci" || environment === "cd") &&
+          !hasProjectGhcrToken &&
+          !hasSharedRegistry
             ? RECOMMENDED
             : ""
         }

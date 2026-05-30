@@ -5,9 +5,9 @@ import { PlasmaWave } from "@/components/common/plasma-wave";
 
 const FEATURES = [
   "Repository analysis with stack & test detection",
-  "Deterministic CI scaffolding for GitHub Actions",
-  "AI-assisted adaptations with diff summaries",
-  "Project-scoped secrets management",
+  "CI & CD scaffolding for GitHub Actions and Kubernetes",
+  "One-click deploy to Azure AKS via generated Pull Requests",
+  "Live deployment tracking with project & app secrets",
 ];
 
 export function AuthLayout() {
@@ -42,21 +42,21 @@ export function AuthLayout() {
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 backdrop-blur-md">
               <GitBranch className="h-3.5 w-3.5 text-primary" />
               <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary/90">
-                Onboard any repository
+                From repository to production
               </span>
             </span>
 
             <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight xl:text-6xl">
-              Ship a{" "}
-              <span className="text-gradient">production-ready</span>
+              Build, ship and{" "}
+              <span className="text-gradient">deploy</span>
               <br />
-              CI pipeline in minutes.
+              your apps in minutes.
             </h1>
 
             <p className="max-w-xl text-base leading-relaxed text-foreground/75 xl:text-lg">
-              Import a GitHub repository, analyze its stack, generate a tailored
-              workflow, then open a Pull Request — all from one developer
-              console.
+              Import a GitHub repository, analyze its stack, generate CI and CD
+              workflows, deploy to Kubernetes through a Pull Request, then track
+              the live deployment — all from one developer console.
             </p>
 
             <ul className="grid w-full grid-cols-1 gap-3 pt-2 sm:grid-cols-2">

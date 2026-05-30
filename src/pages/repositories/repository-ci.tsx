@@ -30,9 +30,11 @@ import { Markdown } from "@/components/common/markdown";
 import { CiStatusBadge } from "@/components/common/status-badge";
 import { AdaptDialog } from "@/components/ci/adapt-dialog";
 import { CreatePrDialog } from "@/components/ci/create-pr-dialog";
+import { GhcrLogo } from "@/components/common/provider-logos";
 import { repositoryService } from "@/services/repository.service";
 import { ciService } from "@/services/ci.service";
 import { secretService } from "@/services/secret.service";
+import { containerRegistryService } from "@/services/container-registry.service";
 import { useToastError } from "@/hooks/use-toast-error";
 import type {
   CiAdaptResponse,
@@ -63,6 +65,16 @@ export function RepositoryCiPage() {
     queryFn: () => secretService.list(projectId!),
     enabled: Boolean(projectId),
   });
+
+  const registriesQuery = useQuery({
+    queryKey: ["container-registries"],
+    queryFn: () => containerRegistryService.list(),
+  });
+  const defaultRegistry =
+    registriesQuery.data?.items.find((r) => r.is_default) ??
+    registriesQuery.data?.items[0] ??
+    null;
+  const hasSharedRegistry = Boolean(defaultRegistry);
 
   const hasAnalysis = Boolean(analysisQuery.data);
 
@@ -104,6 +116,15 @@ export function RepositoryCiPage() {
         }),
     );
   }, [requirementsQuery.data]);
+
+  // Adopt the shared registry URL once the default registry resolves,
+  // unless the user already changed the field.
+  useEffect(() => {
+    if (defaultRegistry && registry === "ghcr.io") {
+      setRegistry(defaultRegistry.registry_url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultRegistry]);
 
   const previewMutation = useMutation({
     mutationFn: () =>
@@ -179,12 +200,17 @@ export function RepositoryCiPage() {
   const missingSecrets = (
     preview?.missing_project_secrets ??
     requiredSecrets.filter((k) => !existingSecretKeys.has(k))
-  ).filter((key, index, keys) => keys.indexOf(key) === index);
+  )
+    .filter((key, index, keys) => keys.indexOf(key) === index)
+    // GHCR_TOKEN is provided by the shared registry; don't flag it per project.
+    .filter((key) => !(hasSharedRegistry && key === "GHCR_TOKEN"));
   const syncSecretsAvailable = (preview?.github_secrets_to_sync?.length ?? 0) > 0;
   const syncSecretsDefault =
-    syncSecretsAvailable && missingSecrets.length === 0;
+    syncSecretsAvailable && (hasSharedRegistry || missingSecrets.length === 0);
 
   const configuredForRequiredSecret = (githubSecretName: string) => {
+    // The shared registry covers GHCR_TOKEN globally.
+    if (hasSharedRegistry && githubSecretName === "GHCR_TOKEN") return true;
     const mapping = preview?.secret_mappings?.find(
       (item) => item.github_secret_name === githubSecretName,
     );
@@ -253,6 +279,29 @@ export function RepositoryCiPage() {
         />
       ) : (
         <>
+          {hasSharedRegistry ? (
+            <Card className="flex items-start gap-3 border-success/30 bg-success/5 p-4 text-sm">
+              <GhcrLogo className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-foreground">
+                  Shared registry configured
+                </p>
+                <p className="text-muted-foreground">
+                  Images are pushed to{" "}
+                  <span className="font-mono">
+                    {defaultRegistry!.registry_url}/{defaultRegistry!.namespace}
+                  </span>
+                  . The platform syncs{" "}
+                  <span className="font-mono">
+                    {defaultRegistry!.auth_secret_name}
+                  </span>{" "}
+                  from the global registry — you don't need to add it per
+                  project.
+                </p>
+              </div>
+            </Card>
+          ) : null}
+
           <div className="grid gap-4 lg:grid-cols-3">
             <SectionCard
               title="Options"

@@ -8,7 +8,7 @@ import {
   Settings2,
   Sparkles,
   ArrowRight,
-  Cloud,
+  Server,
   type LucideIcon,
 } from "lucide-react";
 import { env } from "@/config/env";
@@ -55,10 +55,10 @@ const adminNavGroup: NavGroup = {
   title: "Admin",
   items: [
     {
-      to: "/admin/cloud-targets",
-      label: "Cloud Nodes",
-      icon: Cloud,
-      matchPrefix: "/admin/cloud-targets",
+      to: "/admin/infrastructure",
+      label: "Platform Infrastructure",
+      icon: Server,
+      matchPrefix: "/admin/infrastructure",
     },
   ],
 };
@@ -191,7 +191,7 @@ export function Sidebar() {
               </span>
             </div>
             <p className="text-[12px] leading-snug text-muted-foreground">
-              Import a repo and ship a CI pipeline in minutes.
+              Import a repo, ship CI/CD and deploy to Kubernetes in minutes.
             </p>
             <div className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-medium text-foreground/90 transition-colors group-hover:text-primary">
               Onboard repository

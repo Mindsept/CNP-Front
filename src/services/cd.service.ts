@@ -3,6 +3,7 @@ import type {
   CdApproveResponse,
   CdCreatePrInput,
   CdCreatePrResponse,
+  CdDeploymentStatus,
   CdPipelineListResponse,
   CdPreview,
   CdPreviewInput,
@@ -50,6 +51,25 @@ export const cdService = {
   list(repositoryId: string): Promise<CdPipelineListResponse> {
     return api.get<CdPipelineListResponse>(
       `/repositories/${repositoryId}/cd`,
+    );
+  },
+
+  deployment(
+    repositoryId: string,
+    pipelineId: string,
+  ): Promise<CdDeploymentStatus> {
+    return api.get<CdDeploymentStatus>(
+      `/repositories/${repositoryId}/cd/${pipelineId}/deployment`,
+    );
+  },
+
+  refreshDeployment(
+    repositoryId: string,
+    pipelineId: string,
+  ): Promise<CdDeploymentStatus> {
+    return api.post<CdDeploymentStatus>(
+      `/repositories/${repositoryId}/cd/${pipelineId}/refresh-deployment`,
+      {},
     );
   },
 };

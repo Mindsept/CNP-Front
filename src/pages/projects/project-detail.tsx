@@ -24,6 +24,7 @@ import {
   RoleBadge,
   StackBadge,
 } from "@/components/common/status-badge";
+import { ProjectDeploymentsSection } from "@/components/cd/project-deployments-section";
 import { projectService } from "@/services/project.service";
 import { repositoryService } from "@/services/repository.service";
 
@@ -223,6 +224,8 @@ export function ProjectDetailPage() {
           </Card>
         </div>
       </div>
+
+      <ProjectDeploymentsSection projectId={id} />
     </div>
   );
 }

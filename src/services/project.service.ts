@@ -7,6 +7,7 @@ import type {
   ProjectMember,
   ProjectSummary,
 } from "@/types/project";
+import type { ProjectDeploymentsResponse } from "@/types/cd";
 
 export const projectService = {
   list(): Promise<Paginated<ProjectSummary>> {
@@ -27,5 +28,11 @@ export const projectService = {
 
   addMember(projectId: string, input: AddMemberInput): Promise<ProjectMember> {
     return api.post<ProjectMember>(`/projects/${projectId}/members`, input);
+  },
+
+  deployments(projectId: string): Promise<ProjectDeploymentsResponse> {
+    return api.get<ProjectDeploymentsResponse>(
+      `/projects/${projectId}/deployments`,
+    );
   },
 };

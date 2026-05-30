@@ -37,7 +37,7 @@ export function DashboardPage() {
         eyebrow="Overview"
         icon={LayoutDashboard}
         title={firstName ? `Welcome back, ${firstName}` : "Welcome back"}
-        description="A real-time view of the projects, repositories and CI pipelines you onboarded on the platform."
+        description="A real-time view of the projects, repositories, CI/CD pipelines and deployments you manage on the platform."
         actions={
           <Button asChild>
             <Link to="/projects">

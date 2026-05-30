@@ -40,7 +40,8 @@ export interface CloudTargetInput {
 
 export interface CloudTarget extends CloudTargetInput {
   id: string;
-  project_id: string;
+  /** null for global (platform-wide) cloud nodes, a project id for legacy scoped ones. */
+  project_id: string | null;
   kubeconfig_strategy: KubeconfigStrategy;
   deployment_defaults: DeploymentDefaults;
   created_at: string;
