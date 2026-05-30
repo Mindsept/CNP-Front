@@ -17,7 +17,9 @@ import { RepositoriesListPage } from "@/pages/repositories/repositories-list";
 import { RepositoryDetailPage } from "@/pages/repositories/repository-detail";
 import { RepositoryAnalysisPage } from "@/pages/repositories/repository-analysis";
 import { RepositoryCiPage } from "@/pages/repositories/repository-ci";
+import { RepositoryCdPage } from "@/pages/repositories/repository-cd";
 import { ProjectSecretsPage } from "@/pages/secrets/project-secrets";
+import { AdminCloudTargetsPage } from "@/pages/cloud-targets/admin-cloud-targets";
 import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
@@ -53,6 +55,11 @@ export const router = createBrowserRouter([
             element: <ProjectSecretsPage />,
           },
 
+          {
+            path: "/admin/cloud-targets",
+            element: <AdminCloudTargetsPage />,
+          },
+
           { path: "/github", element: <GithubConnectPage /> },
           {
             path: "/github/installations",
@@ -71,6 +78,10 @@ export const router = createBrowserRouter([
           {
             path: "/repositories/:repositoryId/ci",
             element: <RepositoryCiPage />,
+          },
+          {
+            path: "/repositories/:repositoryId/cd",
+            element: <RepositoryCdPage />,
           },
 
           { path: "/jobs/:jobId", element: <JobDetailPage /> },

@@ -369,7 +369,7 @@ export function RepositoryCiPage() {
               )}
               {projectId ? (
                 <Button size="sm" variant="outline" asChild className="w-full">
-                  <Link to={`/projects/${projectId}/secrets`}>
+                  <Link to={`/projects/${projectId}/secrets?env=ci`}>
                     <KeyRound className="h-3.5 w-3.5" />
                     Manage secrets
                   </Link>

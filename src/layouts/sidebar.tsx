@@ -8,10 +8,12 @@ import {
   Settings2,
   Sparkles,
   ArrowRight,
+  Cloud,
   type LucideIcon,
 } from "lucide-react";
 import { env } from "@/config/env";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface NavItem {
   to: string;
@@ -26,7 +28,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
+const baseNavGroups: NavGroup[] = [
   {
     title: "Overview",
     items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, end: true }],
@@ -49,9 +51,27 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+const adminNavGroup: NavGroup = {
+  title: "Admin",
+  items: [
+    {
+      to: "/admin/cloud-targets",
+      label: "Cloud Nodes",
+      icon: Cloud,
+      matchPrefix: "/admin/cloud-targets",
+    },
+  ],
+};
+
 export function Sidebar() {
   const location = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [logoFailed, setLogoFailed] = useState(false);
+
+  const navGroups = isAdmin
+    ? [...baseNavGroups, adminNavGroup]
+    : baseNavGroups;
 
   return (
     <aside className="hidden h-full w-[264px] shrink-0 flex-col border-r border-border bg-surface/60 backdrop-blur-xl md:flex">

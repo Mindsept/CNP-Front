@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, GitBranch, Github, Microscope, Workflow } from "lucide-react";
+import { ExternalLink, GitBranch, Github, Microscope, Rocket, Workflow } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
@@ -81,10 +81,16 @@ export function RepositoryDetailPage() {
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </Button>
-            <Button asChild>
+            <Button variant="outline" asChild>
               <Link to={`/repositories/${id}/ci`}>
                 <Workflow className="h-4 w-4" />
                 CI workflow
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to={`/repositories/${id}/cd`}>
+                <Rocket className="h-4 w-4" />
+                CD workflow
               </Link>
             </Button>
           </>
@@ -158,6 +164,12 @@ export function RepositoryDetailPage() {
                 description="Preview a workflow."
                 onClick={() => navigate(`/repositories/${id}/ci`)}
                 icon={<Workflow className="h-4 w-4 text-primary" />}
+              />
+              <Action
+                label="Generate CD"
+                description="Deploy to AKS via a PR."
+                onClick={() => navigate(`/repositories/${id}/cd`)}
+                icon={<Rocket className="h-4 w-4 text-primary" />}
               />
               <Action
                 label="Browse repositories"
