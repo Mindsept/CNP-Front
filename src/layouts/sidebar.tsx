@@ -203,16 +203,13 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-border">
-        <NavLink
-          to="/settings"
-          className="flex items-center gap-2.5 px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-surface-elevated hover:text-foreground"
-        >
+        <div className="flex cursor-not-allowed items-center gap-2.5 px-5 py-2.5 text-xs text-muted-foreground">
           <Settings2 className="h-3.5 w-3.5" />
           <span>Platform settings</span>
           <span className="ml-auto rounded-full bg-muted/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
             Soon
           </span>
-        </NavLink>
+        </div>
         <div className="flex items-center justify-between border-t border-border/60 px-5 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="relative flex h-1.5 w-1.5">
