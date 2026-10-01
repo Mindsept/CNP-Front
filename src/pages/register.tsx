@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/use-auth";
 import { useToastError } from "@/hooks/use-toast-error";
+import { authService } from "@/services/auth.service";
 
 interface FieldErrors {
   email?: string;
@@ -16,7 +16,6 @@ interface FieldErrors {
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, login } = useAuth();
   const onError = useToastError();
 
   const [fullName, setFullName] = useState("");
@@ -44,19 +43,15 @@ export function RegisterPage() {
 
     setSubmitting(true);
     try {
-      await register({
+      await authService.register({
         email: email.trim(),
         password,
         full_name: fullName.trim(),
       });
-      try {
-        await login({ email: email.trim(), password });
-        toast.success("Account created. Welcome!");
-        navigate("/", { replace: true });
-      } catch {
-        toast.success("Account created. Please sign in.");
-        navigate("/login", { replace: true });
-      }
+      toast.success(
+        "Legacy CNP account created. Keycloak access must be provisioned separately.",
+      );
+      navigate("/login", { replace: true });
     } catch (err) {
       onError(err, "Could not create your account");
     } finally {
@@ -68,13 +63,15 @@ export function RegisterPage() {
     <div className="space-y-8">
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary/80">
-          Create account
+          Legacy registration
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Get started in seconds
+          Backend account registration
         </h1>
         <p className="text-sm text-muted-foreground">
-          One account to manage every project, repository and CI workflow.
+          This legacy form does not create a Keycloak account and does not sign
+          you in. It remains temporarily available until account provisioning is
+          migrated.
         </p>
       </div>
 
