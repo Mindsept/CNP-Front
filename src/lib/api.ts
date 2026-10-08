@@ -15,6 +15,7 @@ const instance: AxiosInstance = axios.create({
     Accept: "application/json",
   },
   timeout: 30_000,
+  withCredentials: true,
 });
 
 instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {

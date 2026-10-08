@@ -1,0 +1,2100 @@
+{
+  "schema_version": "1.0",
+  "navigation": [
+    {
+      "label": "Dashboard",
+      "route": "/",
+      "group": "Overview",
+      "help_id": "nav.dashboard",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "Projects",
+      "route": "/projects",
+      "group": "Workspace",
+      "help_id": "nav.projects",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "GitHub",
+      "route": "/github",
+      "group": "Workspace",
+      "help_id": "nav.github",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "Audit log",
+      "route": "/audit",
+      "group": "System",
+      "help_id": "nav.audit",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "Platform Infrastructure",
+      "route": "/admin/infrastructure",
+      "group": "Admin",
+      "help_id": "nav.admin.infrastructure",
+      "visible_to_roles": [
+        "admin"
+      ]
+    },
+    {
+      "label": "Quickstart: Onboard repository",
+      "route": "/github",
+      "group": "Sidebar quickstart",
+      "help_id": "nav.quickstart.github",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "MCP Connections",
+      "route": "/mcp/connections",
+      "group": "MCP",
+      "help_id": "nav.mcp.connections",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    },
+    {
+      "label": "MCP Reviews",
+      "route": "/mcp/reviews",
+      "group": "MCP",
+      "help_id": "nav.mcp.reviews",
+      "visible_to_roles": [
+        "user",
+        "admin"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "route_path": "/login",
+      "page_name": "LoginPage",
+      "domain": "authentication",
+      "auth_required": false,
+      "allowed_roles": [
+        "anonymous"
+      ],
+      "purpose": "Authenticate a user and preserve the requested next route.",
+      "main_user_actions": [
+        "Enter email and password",
+        "Submit login",
+        "Navigate to registration"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "use": "Exchange credentials for tokens"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/me",
+          "use": "Fetch the signed-in user after token storage"
+        }
+      ],
+      "prerequisites": [
+        "User account exists",
+        "Backend auth API is reachable"
+      ],
+      "success_state": "Tokens and user profile are stored, then the user is navigated to next or /.",
+      "common_failure_states": [
+        "Email or password missing",
+        "Invalid credentials",
+        "Auth API error",
+        "Network timeout"
+      ],
+      "help_topics": [
+        "auth.login.submit",
+        "auth.register.link"
+      ],
+      "key_ui_components": [
+        "AuthLayout",
+        "Button",
+        "Input",
+        "Label"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Sign in form",
+          "help_id": "auth.login.form"
+        },
+        {
+          "label": "Sign in",
+          "help_id": "auth.login.submit"
+        },
+        {
+          "label": "Create one",
+          "help_id": "auth.register.link"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/register",
+      "page_name": "RegisterPage",
+      "domain": "authentication",
+      "auth_required": false,
+      "allowed_roles": [
+        "anonymous"
+      ],
+      "purpose": "Create a user account and attempt automatic login.",
+      "main_user_actions": [
+        "Enter full name, email, and password",
+        "Submit registration",
+        "Navigate back to login"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/auth/register",
+          "use": "Create account"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "use": "Attempt automatic login after registration"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/me",
+          "use": "Fetch user profile after automatic login"
+        }
+      ],
+      "prerequisites": [
+        "Valid email address",
+        "Password has at least 8 characters"
+      ],
+      "success_state": "Account is created. If automatic login succeeds, the user lands on /; otherwise the user is sent to /login.",
+      "common_failure_states": [
+        "Invalid email format",
+        "Short password",
+        "Duplicate account",
+        "Auth API error"
+      ],
+      "help_topics": [
+        "auth.register.submit",
+        "auth.login.link"
+      ],
+      "key_ui_components": [
+        "AuthLayout",
+        "Button",
+        "Input",
+        "Label"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Create account form",
+          "help_id": "auth.register.form"
+        },
+        {
+          "label": "Create account",
+          "help_id": "auth.register.submit"
+        },
+        {
+          "label": "Sign in",
+          "help_id": "auth.login.link"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/",
+      "page_name": "DashboardPage",
+      "domain": "dashboard",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Show platform-wide counts, recent activity, and quick actions.",
+      "main_user_actions": [
+        "Open projects",
+        "Connect GitHub",
+        "Open audit log",
+        "Start onboarding flow"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/dashboard/summary",
+          "use": "Load counts and recent events"
+        }
+      ],
+      "prerequisites": [
+        "Valid access token"
+      ],
+      "success_state": "Metrics, recent activity, and quick actions are rendered; empty state appears when no projects or repositories exist.",
+      "common_failure_states": [
+        "Dashboard summary request fails",
+        "Token refresh fails and redirects to /login"
+      ],
+      "help_topics": [
+        "nav.dashboard",
+        "projects.create.open",
+        "github.connect.start"
+      ],
+      "key_ui_components": [
+        "AppLayout",
+        "PageHeader",
+        "MetricCard",
+        "SectionCard",
+        "EmptyState",
+        "ErrorState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Go to projects",
+          "help_id": "nav.projects"
+        },
+        {
+          "label": "Connect GitHub",
+          "help_id": "nav.github"
+        },
+        {
+          "label": "See audit log",
+          "help_id": "nav.audit"
+        }
+      ],
+      "navigation_entry": {
+        "label": "Dashboard",
+        "help_id": "nav.dashboard"
+      }
+    },
+    {
+      "route_path": "/projects",
+      "page_name": "ProjectsListPage",
+      "domain": "projects",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "List projects available to the current user and create new projects.",
+      "main_user_actions": [
+        "Open an existing project",
+        "Open the new project dialog",
+        "Create a project"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/projects",
+          "use": "List projects"
+        },
+        {
+          "method": "POST",
+          "path": "/projects",
+          "use": "Create project"
+        }
+      ],
+      "prerequisites": [
+        "Valid access token"
+      ],
+      "success_state": "Project cards render, or a new project is created and the user is navigated to /projects/:projectId.",
+      "common_failure_states": [
+        "Project list fails",
+        "Name or slug missing",
+        "Slug contains invalid characters",
+        "Create request is rejected"
+      ],
+      "help_topics": [
+        "projects.create.open",
+        "projects.create.submit"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "CreateProjectDialog",
+        "Card",
+        "RoleBadge",
+        "EmptyState",
+        "LoadingState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "New project",
+          "help_id": "projects.create.open"
+        },
+        {
+          "label": "New project form",
+          "help_id": "projects.create.form"
+        },
+        {
+          "label": "Create project",
+          "help_id": "projects.create.submit"
+        }
+      ],
+      "navigation_entry": {
+        "label": "Projects",
+        "help_id": "nav.projects"
+      }
+    },
+    {
+      "route_path": "/projects/:projectId",
+      "page_name": "ProjectDetailPage",
+      "domain": "projects",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "project_roles_if_known": [
+        "owner",
+        "maintainer",
+        "viewer"
+      ],
+      "purpose": "Show project metadata, repositories, members, and deployment status summary.",
+      "main_user_actions": [
+        "Open project secrets",
+        "Open project settings",
+        "Start GitHub import",
+        "Open repository list",
+        "Open member management",
+        "Refresh deployment summaries"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/projects/:projectId",
+          "use": "Load project and members"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/:projectId/repositories",
+          "use": "Load project repositories"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/:projectId/deployments",
+          "use": "Load project deployment summary"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/cd/:pipelineId/refresh-deployment",
+          "use": "Refresh a repository deployment row"
+        }
+      ],
+      "prerequisites": [
+        "Current user can access the project"
+      ],
+      "success_state": "Project overview, members, repository summary, and deployment summary are visible.",
+      "common_failure_states": [
+        "Project not found",
+        "Repository list fails",
+        "Deployment summary fails",
+        "Refresh rejected until CD PR is created and merged"
+      ],
+      "help_topics": [
+        "repositories.import.start",
+        "repositories.list.open",
+        "project.members.manage",
+        "cd.deployment.refresh"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "ProjectDeploymentsSection",
+        "RoleBadge",
+        "OnboardingStatusBadge",
+        "StackBadge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Secrets",
+          "help_id": "secrets.open"
+        },
+        {
+          "label": "Settings",
+          "help_id": "projects.settings.open"
+        },
+        {
+          "label": "Import from GitHub",
+          "help_id": "repositories.import.start"
+        },
+        {
+          "label": "Manage repositories",
+          "help_id": "repositories.list.open"
+        },
+        {
+          "label": "Manage members",
+          "help_id": "project.members.manage"
+        },
+        {
+          "label": "Deployments panel",
+          "help_id": "cd.project-deployments.panel"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/projects/:projectId/settings",
+      "page_name": "ProjectSettingsPage",
+      "domain": "project members",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "project_roles_if_known": [
+        "owner",
+        "maintainer",
+        "viewer"
+      ],
+      "purpose": "Edit project metadata and add project members.",
+      "main_user_actions": [
+        "Save project name and description",
+        "Add member by email and role"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/projects/:projectId",
+          "use": "Load current project and members"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/:projectId",
+          "use": "Update project metadata"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/:projectId/members",
+          "use": "Add a member"
+        }
+      ],
+      "prerequisites": [
+        "Current user can access the project",
+        "Backend authorizes metadata/member changes"
+      ],
+      "success_state": "Project metadata updates or a member is added and the project query is refreshed.",
+      "common_failure_states": [
+        "Project load fails",
+        "Backend rejects update",
+        "Member email missing",
+        "Member add fails or role is not allowed"
+      ],
+      "help_topics": [
+        "projects.settings.save",
+        "project.members.add.submit"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Input",
+        "Textarea",
+        "Select",
+        "RoleBadge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Project settings form",
+          "help_id": "projects.settings.form"
+        },
+        {
+          "label": "Save changes",
+          "help_id": "projects.settings.save"
+        },
+        {
+          "label": "Add member form",
+          "help_id": "project.members.add.form"
+        },
+        {
+          "label": "Add",
+          "help_id": "project.members.add.submit"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/projects/:projectId/repositories",
+      "page_name": "RepositoriesListPage",
+      "domain": "repository import",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "List repositories imported into a project and provide the GitHub import entry point.",
+      "main_user_actions": [
+        "Open imported repository detail",
+        "Go to GitHub installations to import another repository"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/projects/:projectId",
+          "use": "Load project header context"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/:projectId/repositories",
+          "use": "List project repositories"
+        }
+      ],
+      "prerequisites": [
+        "Current user can access the project"
+      ],
+      "success_state": "Repository rows render, or the empty state links to GitHub installations.",
+      "common_failure_states": [
+        "Project context fails",
+        "Repository list fails",
+        "No repositories imported yet"
+      ],
+      "help_topics": [
+        "repositories.import.start",
+        "repositories.detail.open"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "Card",
+        "StackBadge",
+        "OnboardingStatusBadge",
+        "EmptyState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Import from GitHub",
+          "help_id": "repositories.import.start"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/projects/:projectId/secrets",
+      "page_name": "ProjectSecretsPage",
+      "domain": "project secrets",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Manage write-only project secrets by environment.",
+      "main_user_actions": [
+        "Switch environment",
+        "Create a secret",
+        "Delete a secret",
+        "Review GHCR_TOKEN warnings"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/projects/:projectId",
+          "use": "Load project header context"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/:projectId/secrets",
+          "use": "List secret metadata"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/:projectId/secrets",
+          "use": "Create secret"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/:projectId/secrets/:secretId",
+          "use": "Delete secret"
+        },
+        {
+          "method": "GET",
+          "path": "/container-registries",
+          "use": "Detect shared registry configuration"
+        }
+      ],
+      "prerequisites": [
+        "Current user can access the project",
+        "Secret key uses uppercase letters, digits, and underscores"
+      ],
+      "success_state": "Secret metadata appears in the selected environment; values are never read back.",
+      "common_failure_states": [
+        "Secrets list fails",
+        "Missing key or value",
+        "Invalid key format",
+        "Create/delete request fails",
+        "GHCR_TOKEN missing warning for CI/CD"
+      ],
+      "help_topics": [
+        "secrets.create.submit",
+        "secrets.delete.open",
+        "secrets.ci.manage",
+        "secrets.cd.manage"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Dialog",
+        "ConfirmDialog",
+        "Input",
+        "Textarea",
+        "Select",
+        "Badge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "New secret",
+          "help_id": "secrets.create.open"
+        },
+        {
+          "label": "Secrets list",
+          "help_id": "secrets.list.panel"
+        },
+        {
+          "label": "New secret dialog",
+          "help_id": "secrets.create.dialog"
+        },
+        {
+          "label": "New secret form",
+          "help_id": "secrets.create.form"
+        },
+        {
+          "label": "Save secret",
+          "help_id": "secrets.create.submit"
+        },
+        {
+          "label": "Delete",
+          "help_id": "secrets.delete.open"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/github",
+      "page_name": "GithubConnectPage",
+      "domain": "GitHub connection",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Start the GitHub App installation flow and show linked installations.",
+      "main_user_actions": [
+        "Start GitHub App installation",
+        "View all installations",
+        "Browse repositories for an installation"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/github/install-url",
+          "use": "Retrieve external GitHub App install URL"
+        },
+        {
+          "method": "GET",
+          "path": "/github/installations",
+          "use": "List linked installations"
+        }
+      ],
+      "prerequisites": [
+        "Valid access token",
+        "Backend has GitHub App configuration"
+      ],
+      "success_state": "The browser is redirected to GitHub for installation, or linked installations are listed.",
+      "common_failure_states": [
+        "Install URL is empty",
+        "GitHub endpoints fail",
+        "User cancels GitHub install flow"
+      ],
+      "help_topics": [
+        "github.connect.start",
+        "github.installations.view"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Feature cards",
+        "Badge",
+        "EmptyState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Connect GitHub",
+          "help_id": "github.connect.start"
+        },
+        {
+          "label": "View all",
+          "help_id": "github.installations.view"
+        },
+        {
+          "label": "Browse repos",
+          "help_id": "github.installations.repositories.view"
+        }
+      ],
+      "navigation_entry": {
+        "label": "GitHub",
+        "help_id": "nav.github"
+      }
+    },
+    {
+      "route_path": "/github/installations",
+      "page_name": "GithubInstallationsPage",
+      "domain": "GitHub installations",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Browse GitHub App installations and import accessible repositories into projects.",
+      "main_user_actions": [
+        "Refresh installations",
+        "Select installation",
+        "Filter repositories",
+        "Open repository on GitHub",
+        "Import repository into a project"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/github/installations",
+          "use": "List installations"
+        },
+        {
+          "method": "GET",
+          "path": "/github/installations/:installationId/repositories",
+          "use": "List accessible repositories"
+        },
+        {
+          "method": "GET",
+          "path": "/projects",
+          "use": "Load import target projects"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/:projectId/repositories/import",
+          "use": "Import selected repository"
+        }
+      ],
+      "prerequisites": [
+        "At least one GitHub installation",
+        "At least one project before importing"
+      ],
+      "success_state": "Repository is imported and the user is navigated to /repositories/:repositoryId.",
+      "common_failure_states": [
+        "No GitHub installations",
+        "No accessible repositories",
+        "No projects exist",
+        "Import request fails",
+        "Repository already imported"
+      ],
+      "help_topics": [
+        "github.installations.refresh",
+        "github.installations.select",
+        "repositories.import.open",
+        "repositories.import.submit"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "ImportRepoDialog",
+        "Input",
+        "Button",
+        "EmptyState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Refresh",
+          "help_id": "github.installations.refresh"
+        },
+        {
+          "label": "Installation selector",
+          "help_id": "github.installations.panel"
+        },
+        {
+          "label": "Installation option",
+          "help_id": "github.installations.select"
+        },
+        {
+          "label": "Accessible repositories panel",
+          "help_id": "github.installations.repositories-panel"
+        },
+        {
+          "label": "Import",
+          "help_id": "repositories.import.open"
+        },
+        {
+          "label": "Import dialog",
+          "help_id": "repositories.import.dialog"
+        },
+        {
+          "label": "Import submit",
+          "help_id": "repositories.import.submit"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/github/callback",
+      "page_name": "GithubCallbackPage",
+      "domain": "GitHub connection",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Handle GitHub App installation callback query parameters and redirect to the next UI page.",
+      "main_user_actions": [
+        "Automatic callback handling only"
+      ],
+      "related_api_endpoints": [],
+      "prerequisites": [
+        "GitHub redirects back with installation_id or error"
+      ],
+      "success_state": "Success toast is shown, GitHub installation query is invalidated, and the user is redirected to /github/installations.",
+      "common_failure_states": [
+        "Callback contains error query parameter",
+        "Missing installation_id",
+        "User is redirected back to /github"
+      ],
+      "help_topics": [
+        "github.callback.handle"
+      ],
+      "key_ui_components": [
+        "Navigate",
+        "toast"
+      ],
+      "important_forms_and_buttons": [],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/repositories/:repositoryId",
+      "page_name": "RepositoryDetailPage",
+      "domain": "repository detail",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Show repository metadata, latest analysis, CI pipelines, and next-step actions.",
+      "main_user_actions": [
+        "Open repository on GitHub",
+        "Open analysis page",
+        "Open CI workspace",
+        "Open CD workspace",
+        "Inspect tabs"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId",
+          "use": "Load repository details"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/analysis/latest",
+          "use": "Load latest analysis"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/ci",
+          "use": "List CI pipelines"
+        }
+      ],
+      "prerequisites": [
+        "Repository was imported",
+        "Current user can access repository project"
+      ],
+      "success_state": "Repository overview, analysis summary, CI history, and next steps render.",
+      "common_failure_states": [
+        "Repository not found",
+        "Latest analysis missing",
+        "CI list fails",
+        "External GitHub URL unavailable"
+      ],
+      "help_topics": [
+        "repositories.analysis.open",
+        "ci.workspace.open",
+        "cd.workspace.open"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "Tabs",
+        "SectionCard",
+        "Card",
+        "StackBadge",
+        "OnboardingStatusBadge",
+        "CiStatusBadge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Open CI workspace",
+          "help_id": "ci.workspace.open"
+        },
+        {
+          "label": "Open CD workspace",
+          "help_id": "cd.workspace.open"
+        },
+        {
+          "label": "Analyze repository",
+          "help_id": "repositories.analysis.open"
+        },
+        {
+          "label": "Generate CI",
+          "help_id": "ci.workspace.open"
+        },
+        {
+          "label": "Generate CD",
+          "help_id": "cd.workspace.open"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/repositories/:repositoryId/analysis",
+      "page_name": "RepositoryAnalysisPage",
+      "domain": "repository analysis",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Run asynchronous repository analysis and display the latest successful result.",
+      "main_user_actions": [
+        "Run analysis",
+        "Watch analysis job status",
+        "Review detected stack, tests, files, and recommendations"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId",
+          "use": "Load repository context"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/analysis/latest",
+          "use": "Load latest successful analysis"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/analyze",
+          "use": "Queue analysis job"
+        },
+        {
+          "method": "GET",
+          "path": "/jobs/:jobId",
+          "use": "Poll queued/running analysis job"
+        }
+      ],
+      "prerequisites": [
+        "Repository was imported",
+        "Default branch is readable by backend/GitHub integration"
+      ],
+      "success_state": "Analysis job succeeds, repository and latest analysis queries refresh, and latest analysis panels show stack/test details.",
+      "common_failure_states": [
+        "Queue request fails",
+        "Job fails",
+        "Job polling fails",
+        "No analysis yet",
+        "Repository load fails"
+      ],
+      "help_topics": [
+        "repositories.analysis.run"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Card",
+        "JobStatusBadge",
+        "StackBadge",
+        "Badge",
+        "EmptyState"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Analyze repository",
+          "help_id": "repositories.analysis.run"
+        },
+        {
+          "label": "Analysis job panel",
+          "help_id": "repositories.analysis.job-panel"
+        },
+        {
+          "label": "Latest analysis panel",
+          "help_id": "repositories.analysis.latest-panel"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/repositories/:repositoryId/ci",
+      "page_name": "RepositoryCiPage",
+      "domain": "CI Pull Request creation",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Generate, adapt, approve, and open a GitHub Actions CI workflow Pull Request.",
+      "main_user_actions": [
+        "View CI requirements",
+        "Configure options",
+        "Generate CI preview",
+        "Map environment secrets",
+        "Adapt with AI",
+        "Approve workflow",
+        "Create Pull Request",
+        "Manage project secrets"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId",
+          "use": "Load repository context"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/analysis/latest",
+          "use": "Check analysis prerequisite"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/:projectId/secrets",
+          "use": "Load project secrets for mapping and missing secret checks"
+        },
+        {
+          "method": "GET",
+          "path": "/container-registries",
+          "use": "Detect shared registry"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/ci/requirements",
+          "use": "Load detected env vars and suggested mappings"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/ci/preview",
+          "use": "Generate CI workflow preview"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/ci/:pipelineId/adapt",
+          "use": "Adapt generated YAML with instruction"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/ci/:pipelineId/approve",
+          "use": "Approve generated or adapted workflow"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/ci/:pipelineId/create-pr",
+          "use": "Open CI Pull Request"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/ci",
+          "use": "Refresh CI history"
+        }
+      ],
+      "prerequisites": [
+        "Latest repository analysis exists",
+        "Repository is imported from GitHub",
+        "Required project secrets are configured or intentionally deferred"
+      ],
+      "success_state": "Preview YAML is shown, workflow can be approved, and a PR URL/branch is displayed after creation.",
+      "common_failure_states": [
+        "Analysis prerequisite missing",
+        "Requirements request fails",
+        "Missing project secrets warning",
+        "Preview generation fails",
+        "Approval fails",
+        "Create PR fails",
+        "GitHub secret sync fails"
+      ],
+      "help_topics": [
+        "ci.requirements.view",
+        "ci.preview.generate",
+        "ci.approve.submit",
+        "ci.pr.create",
+        "secrets.ci.manage"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "YamlViewer",
+        "Markdown",
+        "AdaptDialog",
+        "CreatePrDialog",
+        "CiStatusBadge",
+        "Switch",
+        "Input",
+        "Badge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "CI requirements panel",
+          "help_id": "ci.requirements.view"
+        },
+        {
+          "label": "Generate CI preview",
+          "help_id": "ci.preview.generate"
+        },
+        {
+          "label": "CI preview panel",
+          "help_id": "ci.preview.panel"
+        },
+        {
+          "label": "Ask AI to adapt",
+          "help_id": "ci.adapt.open"
+        },
+        {
+          "label": "Apply adaptation",
+          "help_id": "ci.adapt.submit"
+        },
+        {
+          "label": "Approve",
+          "help_id": "ci.approve.submit"
+        },
+        {
+          "label": "Open Pull Request dialog",
+          "help_id": "ci.pr.open"
+        },
+        {
+          "label": "CI PR form",
+          "help_id": "ci.pr.form"
+        },
+        {
+          "label": "Open Pull Request submit",
+          "help_id": "ci.pr.create"
+        },
+        {
+          "label": "Manage secrets",
+          "help_id": "secrets.ci.manage"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/repositories/:repositoryId/cd",
+      "page_name": "RepositoryCdPage",
+      "domain": "CD Pull Request creation",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Generate Kubernetes manifests and a GitHub Actions CD workflow, approve them, open a PR, and refresh deployment status.",
+      "main_user_actions": [
+        "View CD requirements",
+        "Select cloud target",
+        "Configure deployment options",
+        "Generate CD preview",
+        "Map app secrets",
+        "Approve CD pipeline",
+        "Create CD PR",
+        "Refresh deployment status",
+        "Open deployed app"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId",
+          "use": "Load repository context"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/cd/requirements",
+          "use": "Load cloud targets, env vars, and required cloud secrets"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/cd",
+          "use": "Load CD history"
+        },
+        {
+          "method": "GET",
+          "path": "/container-registries",
+          "use": "Detect shared registry"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/cd/preview",
+          "use": "Generate CD workflow and manifests"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/cd/:pipelineId/approve",
+          "use": "Approve CD preview"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/cd/:pipelineId/create-pr",
+          "use": "Open CD Pull Request"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/cd/:pipelineId/deployment",
+          "use": "Read deployment status"
+        },
+        {
+          "method": "POST",
+          "path": "/repositories/:repositoryId/cd/:pipelineId/refresh-deployment",
+          "use": "Refresh deployment status from cluster"
+        }
+      ],
+      "prerequisites": [
+        "At least one cloud target exists",
+        "Repository is imported",
+        "CD secrets are configured globally or in project secrets",
+        "Generated CD PR must be merged before deployment refresh can become live"
+      ],
+      "success_state": "Generated files render in tabs, CD pipeline can be approved, PR URL appears, and deployment panel reports pending/deployed/failed status.",
+      "common_failure_states": [
+        "No cloud node configured",
+        "Missing project or cloud secrets",
+        "Preview generation fails",
+        "Approval fails",
+        "Create PR fails",
+        "Refresh returns 409 before PR merge",
+        "Deployment pending for LoadBalancer IP",
+        "Deployment failed with details"
+      ],
+      "help_topics": [
+        "cd.requirements.view",
+        "cd.preview.generate",
+        "cd.approve.submit",
+        "cd.pr.create",
+        "cd.deployment.refresh",
+        "secrets.cd.manage"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Tabs",
+        "YamlViewer",
+        "CdCreatePrDialog",
+        "DeploymentStatusBadge",
+        "Select",
+        "Input",
+        "Switch",
+        "Badge"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "CD requirements panel",
+          "help_id": "cd.requirements.view"
+        },
+        {
+          "label": "Generate CD preview",
+          "help_id": "cd.preview.generate"
+        },
+        {
+          "label": "CD preview panel",
+          "help_id": "cd.preview.panel"
+        },
+        {
+          "label": "Approve",
+          "help_id": "cd.approve.submit"
+        },
+        {
+          "label": "Open Pull Request dialog",
+          "help_id": "cd.pr.open"
+        },
+        {
+          "label": "CD PR form",
+          "help_id": "cd.pr.form"
+        },
+        {
+          "label": "Open Pull Request submit",
+          "help_id": "cd.pr.create"
+        },
+        {
+          "label": "Deployment status panel",
+          "help_id": "cd.deployment.status-panel"
+        },
+        {
+          "label": "Refresh deployment status",
+          "help_id": "cd.deployment.refresh"
+        },
+        {
+          "label": "Manage project secrets",
+          "help_id": "secrets.cd.manage"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/admin/infrastructure",
+      "page_name": "PlatformInfrastructurePage",
+      "domain": "admin infrastructure",
+      "auth_required": true,
+      "allowed_roles": [
+        "admin"
+      ],
+      "purpose": "Configure shared container registry and global cloud nodes for CI/CD.",
+      "main_user_actions": [
+        "Configure or update GHCR registry",
+        "Add Azure AKS cloud node",
+        "Parse cnp_cd_contract JSON",
+        "Review stored secret keys",
+        "Review validation errors"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/container-registries",
+          "use": "List shared registries"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/container-registries",
+          "use": "Create or update shared GHCR registry"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/cloud-nodes",
+          "use": "List global cloud nodes"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/cloud-nodes",
+          "use": "Create or update global cloud node"
+        }
+      ],
+      "prerequisites": [
+        "Signed-in user has role admin",
+        "GHCR PAT for registry save",
+        "Azure credentials or kubeconfig strategy for cloud node save"
+      ],
+      "success_state": "Registry or cloud node is saved, relevant queries refresh, and stored secret keys are shown for cloud nodes.",
+      "common_failure_states": [
+        "Non-admin user sees admin access required",
+        "Registry token missing on first save",
+        "Cloud node payload rejected with 422",
+        "Admin endpoint fails",
+        "Encrypted secret values are not displayed after save"
+      ],
+      "help_topics": [
+        "admin.registry.save",
+        "admin.cloudNodes.save",
+        "admin.cloudNodes.parseContract"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "ProviderCard",
+        "RegistryDialog",
+        "CloudTargetDialog",
+        "Badge",
+        "Card"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Container registry panel",
+          "help_id": "admin.registry.panel"
+        },
+        {
+          "label": "Configure/update registry",
+          "help_id": "admin.registry.open"
+        },
+        {
+          "label": "Registry form",
+          "help_id": "admin.registry.form"
+        },
+        {
+          "label": "Save registry",
+          "help_id": "admin.registry.save"
+        },
+        {
+          "label": "Cloud nodes panel",
+          "help_id": "admin.cloudNodes.panel"
+        },
+        {
+          "label": "Add cloud node",
+          "help_id": "admin.cloudNodes.open"
+        },
+        {
+          "label": "Cloud node form",
+          "help_id": "admin.cloudNodes.form"
+        },
+        {
+          "label": "Parse JSON",
+          "help_id": "admin.cloudNodes.parseContract"
+        },
+        {
+          "label": "Save cloud node",
+          "help_id": "admin.cloudNodes.save"
+        }
+      ],
+      "navigation_entry": {
+        "label": "Platform Infrastructure",
+        "help_id": "nav.admin.infrastructure"
+      }
+    },
+    {
+      "route_path": "/admin/cloud-targets",
+      "page_name": "Redirect",
+      "domain": "admin cloud nodes",
+      "auth_required": true,
+      "allowed_roles": [
+        "admin"
+      ],
+      "purpose": "Legacy admin cloud target route that redirects to /admin/infrastructure.",
+      "main_user_actions": [
+        "Automatic redirect only"
+      ],
+      "related_api_endpoints": [],
+      "prerequisites": [
+        "Valid access token"
+      ],
+      "success_state": "User is redirected to /admin/infrastructure.",
+      "common_failure_states": [
+        "Unauthenticated user is redirected to /login before redirect target renders"
+      ],
+      "help_topics": [
+        "admin.cloudNodes.save"
+      ],
+      "key_ui_components": [
+        "Navigate"
+      ],
+      "important_forms_and_buttons": [],
+      "navigation_entry": null,
+      "redirect_to": "/admin/infrastructure"
+    },
+    {
+      "route_path": "/jobs/:jobId",
+      "page_name": "JobDetailPage",
+      "domain": "background jobs",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Inspect a background job status, payload, result, and worker timeline.",
+      "main_user_actions": [
+        "View job status",
+        "Wait for automatic polling",
+        "Inspect payload JSON",
+        "Inspect result JSON"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/jobs/:jobId",
+          "use": "Load and poll job while queued or running"
+        }
+      ],
+      "prerequisites": [
+        "Known job id from an async frontend action such as repository analysis"
+      ],
+      "success_state": "Job details render and polling stops when the job is succeeded or failed.",
+      "common_failure_states": [
+        "Job not found",
+        "Job failed with error",
+        "Payload/result unavailable",
+        "Polling request fails"
+      ],
+      "help_topics": [
+        "jobs.detail.view"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "Card",
+        "SectionCard",
+        "JobStatusBadge",
+        "YamlViewer"
+      ],
+      "important_forms_and_buttons": [],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/audit",
+      "page_name": "AuditLogPage",
+      "domain": "audit log",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Display recent platform audit events.",
+      "main_user_actions": [
+        "Review recent events",
+        "Retry loading after an error"
+      ],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/audit",
+          "use": "List audit events, optionally supports project_id and repository_id params in service"
+        }
+      ],
+      "prerequisites": [
+        "Valid access token",
+        "Audit backend endpoint enabled for full event list"
+      ],
+      "success_state": "Events render newest first; empty state appears when no events exist.",
+      "common_failure_states": [
+        "Audit endpoint returns 404 or 501 and page shows not available",
+        "Audit request fails",
+        "No audit events yet"
+      ],
+      "help_topics": [
+        "audit.view"
+      ],
+      "key_ui_components": [
+        "PageHeader",
+        "SectionCard",
+        "Badge",
+        "EmptyState",
+        "ErrorState"
+      ],
+      "important_forms_and_buttons": [],
+      "navigation_entry": {
+        "label": "Audit log",
+        "help_id": "nav.audit"
+      }
+    },
+    {
+      "route_path": "*",
+      "page_name": "NotFoundPage",
+      "domain": "system",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Show a 404 page for unknown protected routes.",
+      "main_user_actions": [
+        "Navigate back to dashboard"
+      ],
+      "related_api_endpoints": [],
+      "prerequisites": [
+        "Unknown route inside protected AppLayout"
+      ],
+      "success_state": "User sees 404 copy and can return to /.",
+      "common_failure_states": [
+        "Unauthenticated users are redirected to /login before seeing protected 404"
+      ],
+      "help_topics": [
+        "system.notFound.back"
+      ],
+      "key_ui_components": [
+        "Button",
+        "Link"
+      ],
+      "important_forms_and_buttons": [
+        {
+          "label": "Back to dashboard",
+          "help_id": "nav.dashboard"
+        }
+      ],
+      "navigation_entry": null
+    },
+    {
+      "route_path": "/health",
+      "page_name": "HealthView",
+      "domain": "system/health",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Dedicated health view.",
+      "main_user_actions": [],
+      "related_api_endpoints": [],
+      "prerequisites": [],
+      "success_state": "Not implemented in current frontend.",
+      "common_failure_states": [
+        "No /health route is declared in src/routes/router.tsx"
+      ],
+      "help_topics": [],
+      "key_ui_components": [],
+      "important_forms_and_buttons": [],
+      "navigation_entry": null,
+      "not_implemented": true,
+      "inferred": true
+    },
+    {
+      "route_path": "/mcp/consent",
+      "page_name": "McpConsentPage",
+      "domain": "MCP",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Consentir une connexion MCP pour des scopes et projets explicites.",
+      "main_user_actions": [],
+      "related_api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/oauth/consent"
+        }
+      ],
+      "prerequisites": [
+        "Compte CNP authentifié ; permissions serveur actuelles"
+      ],
+      "success_state": "Réponse API autorisée",
+      "common_failure_states": [
+        "Session/CSRF invalides",
+        "Permissions insuffisantes",
+        "Review expirée ou invalidée"
+      ],
+      "help_topics": []
+    },
+    {
+      "route_path": "/mcp/connections",
+      "page_name": "McpConnectionsPage",
+      "domain": "MCP",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Consulter et révoquer ses connexions MCP.",
+      "main_user_actions": [],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/oauth/connections"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/oauth/connections/{grant_id}"
+        }
+      ],
+      "prerequisites": [
+        "Compte CNP authentifié ; permissions serveur actuelles"
+      ],
+      "success_state": "Réponse API autorisée",
+      "common_failure_states": [
+        "Session/CSRF invalides",
+        "Permissions insuffisantes",
+        "Review expirée ou invalidée"
+      ],
+      "help_topics": []
+    },
+    {
+      "route_path": "/mcp/reviews",
+      "page_name": "McpReviewsPage",
+      "domain": "MCP",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Retrouver les actions en attente de review.",
+      "main_user_actions": [],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/reviews"
+        }
+      ],
+      "prerequisites": [
+        "Compte CNP authentifié ; permissions serveur actuelles"
+      ],
+      "success_state": "Réponse API autorisée",
+      "common_failure_states": [
+        "Session/CSRF invalides",
+        "Permissions insuffisantes",
+        "Review expirée ou invalidée"
+      ],
+      "help_topics": []
+    },
+    {
+      "route_path": "/mcp/reviews/:actionId",
+      "page_name": "McpReviewPage",
+      "domain": "MCP",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Examiner le snapshot immuable et accepter, refuser ou annuler.",
+      "main_user_actions": [],
+      "related_api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/v1/reviews/{action_id}/challenge"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/reviews/{action_id}/decision"
+        }
+      ],
+      "prerequisites": [
+        "Compte CNP authentifié ; permissions serveur actuelles"
+      ],
+      "success_state": "Réponse API autorisée",
+      "common_failure_states": [
+        "Session/CSRF invalides",
+        "Permissions insuffisantes",
+        "Review expirée ou invalidée"
+      ],
+      "help_topics": []
+    },
+    {
+      "route_path": "/mcp/runs/:runId",
+      "page_name": "McpRunPage",
+      "domain": "MCP",
+      "auth_required": true,
+      "allowed_roles": [
+        "user",
+        "admin"
+      ],
+      "purpose": "Suivre le parcours et ses blocages, sans sauter de review.",
+      "main_user_actions": [],
+      "related_api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/deployment-runs/{run_id}"
+        }
+      ],
+      "prerequisites": [
+        "Compte CNP authentifié ; permissions serveur actuelles"
+      ],
+      "success_state": "Réponse API autorisée",
+      "common_failure_states": [
+        "Session/CSRF invalides",
+        "Permissions insuffisantes",
+        "Review expirée ou invalidée"
+      ],
+      "help_topics": []
+    }
+  ],
+  "help_map": [
+    {
+      "help_id": "auth.login.submit",
+      "label": "Submit login",
+      "route": "/login",
+      "description": "Submits email and password, stores returned tokens, fetches /auth/me, and navigates to next or /.",
+      "api_endpoint": "POST /auth/login",
+      "required_state": [
+        "Email and password fields are filled"
+      ],
+      "expected_result": "The user is authenticated and redirected to the requested page or dashboard.",
+      "troubleshooting_hints": [
+        "Check email/password validation",
+        "Verify backend auth API is reachable",
+        "A 401 from protected APIs clears auth and redirects to /login"
+      ]
+    },
+    {
+      "help_id": "auth.register.submit",
+      "label": "Create account",
+      "route": "/register",
+      "description": "Creates an account and attempts automatic login.",
+      "api_endpoint": "POST /auth/register",
+      "required_state": [
+        "Full name is filled",
+        "Email is valid",
+        "Password has at least 8 characters"
+      ],
+      "expected_result": "Account is created; user lands on dashboard if automatic login succeeds.",
+      "troubleshooting_hints": [
+        "Duplicate email or invalid password will be rejected by backend",
+        "If auto-login fails, sign in manually from /login"
+      ]
+    },
+    {
+      "help_id": "github.connect.start",
+      "label": "Connect GitHub",
+      "route": "/github",
+      "description": "Fetches the GitHub App install URL and redirects the browser to GitHub.",
+      "api_endpoint": "GET /github/install-url",
+      "required_state": [
+        "Authenticated user",
+        "Backend GitHub App configuration exists"
+      ],
+      "expected_result": "Browser navigates to GitHub App installation flow.",
+      "troubleshooting_hints": [
+        "If no install_url is returned, check backend GitHub app settings",
+        "If the user cancels installation, return to /github and retry"
+      ]
+    },
+    {
+      "help_id": "projects.create.submit",
+      "label": "Create project",
+      "route": "/projects",
+      "description": "Creates a project from name, slug, and optional description.",
+      "api_endpoint": "POST /projects",
+      "required_state": [
+        "Project name is filled",
+        "Slug is lowercase letters, numbers, and hyphens"
+      ],
+      "expected_result": "Project is created and the user is navigated to /projects/:projectId.",
+      "troubleshooting_hints": [
+        "Use a unique slug",
+        "Fix frontend slug validation before submit",
+        "Check project creation permissions in backend"
+      ]
+    },
+    {
+      "help_id": "project.members.add.submit",
+      "label": "Add project member",
+      "route": "/projects/:projectId/settings",
+      "description": "Adds a member by email with owner, maintainer, or viewer role.",
+      "api_endpoint": "POST /projects/:projectId/members",
+      "required_state": [
+        "Project settings page loaded",
+        "Member email is filled",
+        "Role is selected"
+      ],
+      "expected_result": "Member is added and the project query refreshes.",
+      "troubleshooting_hints": [
+        "Backend may reject unknown users or insufficient permissions",
+        "Confirm email spelling and selected role"
+      ]
+    },
+    {
+      "help_id": "repositories.import.submit",
+      "label": "Import repository",
+      "route": "/github/installations",
+      "description": "Imports the selected GitHub repository into the selected project.",
+      "api_endpoint": "POST /projects/:projectId/repositories/import",
+      "required_state": [
+        "GitHub installation selected",
+        "Repository selected",
+        "At least one project exists"
+      ],
+      "expected_result": "Repository is imported and the user is navigated to /repositories/:repositoryId.",
+      "troubleshooting_hints": [
+        "Create a project before importing",
+        "Refresh installations if repositories are missing",
+        "Backend may reject duplicate imports"
+      ]
+    },
+    {
+      "help_id": "repositories.analysis.run",
+      "label": "Run repository analysis",
+      "route": "/repositories/:repositoryId/analysis",
+      "description": "Queues async analysis for the repository default branch and polls the resulting job.",
+      "api_endpoint": "POST /repositories/:repositoryId/analyze",
+      "required_state": [
+        "Repository detail can be loaded",
+        "Default branch is available"
+      ],
+      "expected_result": "Analysis job succeeds and latest analysis data refreshes.",
+      "troubleshooting_hints": [
+        "If job fails, inspect /jobs/:jobId",
+        "Confirm GitHub installation can read the repository",
+        "Retry after transient worker errors"
+      ]
+    },
+    {
+      "help_id": "ci.requirements.view",
+      "label": "View CI requirements",
+      "route": "/repositories/:repositoryId/ci",
+      "description": "Shows detected environment variables, suggested secret mappings, and missing project secrets before CI generation.",
+      "api_endpoint": "GET /repositories/:repositoryId/ci/requirements",
+      "required_state": [
+        "Latest repository analysis exists"
+      ],
+      "expected_result": "Environment secret mapping panel appears when requirements contain detected env vars.",
+      "troubleshooting_hints": [
+        "Run repository analysis first",
+        "Add missing project secrets from the CI secrets link",
+        "Shared GHCR registry covers GHCR_TOKEN when configured"
+      ]
+    },
+    {
+      "help_id": "ci.preview.generate",
+      "label": "Generate CI preview",
+      "route": "/repositories/:repositoryId/ci",
+      "description": "Generates a GitHub Actions workflow preview using selected Docker, registry, AI explanation, and secret mapping options.",
+      "api_endpoint": "POST /repositories/:repositoryId/ci/preview",
+      "required_state": [
+        "Latest analysis exists",
+        "Required options are set",
+        "Secret mappings are valid if present"
+      ],
+      "expected_result": "Generated YAML and explanation render, status changes to generated.",
+      "troubleshooting_hints": [
+        "If disabled, run analysis first",
+        "Check registry field and secret mappings",
+        "Review missing secret warnings before PR creation"
+      ]
+    },
+    {
+      "help_id": "ci.approve.submit",
+      "label": "Approve CI workflow",
+      "route": "/repositories/:repositoryId/ci",
+      "description": "Approves the generated or adapted CI workflow before PR creation.",
+      "api_endpoint": "POST /repositories/:repositoryId/ci/:pipelineId/approve",
+      "required_state": [
+        "CI preview exists",
+        "Pipeline id is available"
+      ],
+      "expected_result": "Workflow status changes to approved and the Open Pull Request action becomes available.",
+      "troubleshooting_hints": [
+        "Generate a preview first",
+        "If adapted YAML should be used, adapt before approving",
+        "Regenerating preview resets approval"
+      ]
+    },
+    {
+      "help_id": "ci.pr.create",
+      "label": "Create CI Pull Request",
+      "route": "/repositories/:repositoryId/ci",
+      "description": "Pushes a branch with the CI workflow and opens a Pull Request.",
+      "api_endpoint": "POST /repositories/:repositoryId/ci/:pipelineId/create-pr",
+      "required_state": [
+        "CI workflow is approved",
+        "PR dialog fields are filled",
+        "GitHub installation has write permissions"
+      ],
+      "expected_result": "Pull Request URL, number, and branch are displayed.",
+      "troubleshooting_hints": [
+        "Resolve branch naming conflicts",
+        "Check GitHub app repository write permissions",
+        "Sync required secrets if selected"
+      ]
+    },
+    {
+      "help_id": "secrets.create.submit",
+      "label": "Save project secret",
+      "route": "/projects/:projectId/secrets",
+      "description": "Creates a write-only project secret for the selected environment.",
+      "api_endpoint": "POST /projects/:projectId/secrets",
+      "required_state": [
+        "Environment selected",
+        "Key is uppercase letters, digits, and underscores",
+        "Value is filled"
+      ],
+      "expected_result": "Secret metadata appears in the environment list; the value is not shown again.",
+      "troubleshooting_hints": [
+        "Use GHCR_TOKEN for registry auth when no shared registry exists",
+        "Secret values cannot be recovered from UI",
+        "Delete and recreate to rotate a value"
+      ]
+    },
+    {
+      "help_id": "admin.registry.save",
+      "label": "Save registry",
+      "route": "/admin/infrastructure",
+      "description": "Creates or updates the shared GHCR registry and encrypted auth token.",
+      "api_endpoint": "POST /admin/container-registries",
+      "required_state": [
+        "User role is admin",
+        "Registry fields are filled",
+        "Token is filled for first-time configuration"
+      ],
+      "expected_result": "Registry card shows configured/default state and token stored encrypted.",
+      "troubleshooting_hints": [
+        "Non-admin users see access denied",
+        "Leave token blank only when updating an existing registry",
+        "Check registry namespace and PAT scopes"
+      ]
+    },
+    {
+      "help_id": "admin.cloudNodes.save",
+      "label": "Save cloud node",
+      "route": "/admin/infrastructure",
+      "description": "Registers or updates a global Azure AKS cloud node and encrypted secret values.",
+      "api_endpoint": "POST /admin/cloud-nodes",
+      "required_state": [
+        "User role is admin",
+        "Cloud target fields are filled",
+        "Azure credentials or kubeconfig strategy values are provided"
+      ],
+      "expected_result": "Cloud node is listed and stored secret keys are shown.",
+      "troubleshooting_hints": [
+        "Use Parse JSON to auto-fill from cnp_cd_contract",
+        "Backend 422 details are displayed in the validation panel",
+        "Secret values are not displayed after save"
+      ]
+    },
+    {
+      "help_id": "cd.requirements.view",
+      "label": "View CD requirements",
+      "route": "/repositories/:repositoryId/cd",
+      "description": "Shows cloud targets, required cloud secrets, default image, and detected app env vars for CD generation.",
+      "api_endpoint": "GET /repositories/:repositoryId/cd/requirements",
+      "required_state": [
+        "Repository is imported",
+        "At least one cloud node exists for preview generation"
+      ],
+      "expected_result": "Deployment options and required secret panels render.",
+      "troubleshooting_hints": [
+        "Ask an admin to configure a cloud node when empty",
+        "Add missing app secrets in project secrets",
+        "Shared registry covers GHCR_TOKEN when configured"
+      ]
+    },
+    {
+      "help_id": "cd.preview.generate",
+      "label": "Generate CD preview",
+      "route": "/repositories/:repositoryId/cd",
+      "description": "Generates Kubernetes manifests and a GitHub Actions CD workflow preview.",
+      "api_endpoint": "POST /repositories/:repositoryId/cd/preview",
+      "required_state": [
+        "Cloud target selected",
+        "App name, image, image tag, port, and replicas are valid"
+      ],
+      "expected_result": "Generated file tabs, summary, and required secrets render.",
+      "troubleshooting_hints": [
+        "If disabled, fill cloud target, app name, image, and tag",
+        "Resolve missing project secrets before relying on the generated workflow"
+      ]
+    },
+    {
+      "help_id": "cd.approve.submit",
+      "label": "Approve CD pipeline",
+      "route": "/repositories/:repositoryId/cd",
+      "description": "Approves the generated CD preview before PR creation.",
+      "api_endpoint": "POST /repositories/:repositoryId/cd/:pipelineId/approve",
+      "required_state": [
+        "CD preview exists",
+        "Pipeline id is available"
+      ],
+      "expected_result": "CD status changes to approved and the Open Pull Request action becomes available.",
+      "troubleshooting_hints": [
+        "Generate a preview first",
+        "Regenerating preview resets approval"
+      ]
+    },
+    {
+      "help_id": "cd.pr.create",
+      "label": "Create CD Pull Request",
+      "route": "/repositories/:repositoryId/cd",
+      "description": "Pushes a branch with generated CD workflow/manifests and opens a Pull Request.",
+      "api_endpoint": "POST /repositories/:repositoryId/cd/:pipelineId/create-pr",
+      "required_state": [
+        "CD preview is approved",
+        "PR dialog fields are filled",
+        "GitHub installation can write to repository"
+      ],
+      "expected_result": "Pull Request URL, branch, and synced secrets are displayed.",
+      "troubleshooting_hints": [
+        "Check branch naming conflicts",
+        "Ensure secrets can be synced to GitHub Actions",
+        "Deployment starts only after the PR is merged to main"
+      ]
+    },
+    {
+      "help_id": "cd.deployment.refresh",
+      "label": "Refresh deployment status",
+      "route": "/repositories/:repositoryId/cd",
+      "description": "Refreshes live deployment status for a CD pipeline from the configured cluster.",
+      "api_endpoint": "POST /repositories/:repositoryId/cd/:pipelineId/refresh-deployment",
+      "required_state": [
+        "A CD pipeline with status pr_created exists",
+        "CD PR has been created and usually merged",
+        "Cluster credentials are configured"
+      ],
+      "expected_result": "Deployment panel updates to pending, deployed, failed, unknown, or not_deployed.",
+      "troubleshooting_hints": [
+        "A 409 means create and merge the CD PR before refreshing",
+        "Pending often means waiting for a LoadBalancer IP",
+        "Failed deployments show details in the panel"
+      ]
+    }
+  ]
+}

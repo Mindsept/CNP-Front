@@ -1,3 +1,5 @@
+import { mcpService } from "@/services/mcp.service";
+import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -92,6 +94,8 @@ export function RepositoryCiPage() {
 
   const [preview, setPreview] = useState<CiPipelinePreview | null>(null);
   const [adapted, setAdapted] = useState<CiAdaptResponse | null>(null);
+  const reviewedPolicy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
+  const reviewed = Boolean(reviewedPolicy.data?.enabled);
   const [approved, setApproved] = useState(false);
   const [pr, setPr] = useState<CiCreatePrResponse | null>(null);
   const [adaptOpen, setAdaptOpen] = useState(false);
@@ -235,6 +239,7 @@ export function RepositoryCiPage() {
 
   return (
     <div className="space-y-8">
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Workflow}
@@ -586,6 +591,7 @@ export function RepositoryCiPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={reviewed}
                       onClick={() => setAdaptOpen(true)}
                     >
                       <Sparkles className="h-3.5 w-3.5" />
@@ -594,6 +600,7 @@ export function RepositoryCiPage() {
                     {!approved ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => approveMutation.mutate()}
                         loading={approveMutation.isPending}
                       >
@@ -603,6 +610,7 @@ export function RepositoryCiPage() {
                     ) : !pr ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => setPrOpen(true)}
                         loading={createPrMutation.isPending}
                       >

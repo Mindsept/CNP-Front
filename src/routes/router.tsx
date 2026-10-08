@@ -24,6 +24,11 @@ import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
 
+import { McpConsentPage } from "@/pages/mcp/consent";
+import { McpConnectionsPage } from "@/pages/mcp/connections";
+import { McpReviewsPage, McpReviewPage } from "@/pages/mcp/reviews";
+import { McpRunPage } from "@/pages/mcp/run";
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -39,6 +44,11 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: "/", element: <DashboardPage /> },
+          { path: "/mcp/consent", element: <McpConsentPage /> },
+          { path: "/mcp/connections", element: <McpConnectionsPage /> },
+          { path: "/mcp/reviews", element: <McpReviewsPage /> },
+          { path: "/mcp/reviews/:actionId", element: <McpReviewPage /> },
+          { path: "/mcp/runs/:runId", element: <McpRunPage /> },
 
           { path: "/projects", element: <ProjectsListPage /> },
           { path: "/projects/:projectId", element: <ProjectDetailPage /> },

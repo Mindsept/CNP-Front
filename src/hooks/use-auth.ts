@@ -2,6 +2,7 @@ import { useSyncExternalStore, useCallback } from "react";
 import { authStore } from "@/lib/auth";
 import type { AuthUser, LoginInput, RegisterInput } from "@/types/auth";
 import { authService } from "@/services/auth.service";
+import { mcpService } from "@/services/mcp.service";
 
 function subscribe(listener: () => void) {
   return authStore.subscribe(listener);
@@ -52,7 +53,7 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
-    authStore.clear();
+    mcpService.logout().catch(() => undefined).finally(() => authStore.clear());
   }, []);
 
   return {

@@ -1,3 +1,5 @@
+import { mcpService } from "@/services/mcp.service";
+import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,6 +130,9 @@ export function RepositoryCdPage() {
   const [mappings, setMappings] = useState<CdSecretMapping[]>([]);
 
   const [preview, setPreview] = useState<CdPreview | null>(null);
+  const projectId = repoQuery.data?.project_id;
+  const reviewedPolicy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
+  const reviewed = Boolean(reviewedPolicy.data?.enabled);
   const [approved, setApproved] = useState(false);
   const [pr, setPr] = useState<CdCreatePrResponse | null>(null);
   const [prOpen, setPrOpen] = useState(false);
@@ -262,7 +267,6 @@ export function RepositoryCdPage() {
   });
 
   const requirements = requirementsQuery.data;
-  const projectId = repoQuery.data?.project_id;
   const deployment = deploymentQuery.data;
 
   const hasCloudTargets = (requirements?.cloud_targets.length ?? 0) > 0;
@@ -305,6 +309,7 @@ export function RepositoryCdPage() {
 
   return (
     <div className="space-y-8">
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Rocket}
@@ -736,6 +741,7 @@ export function RepositoryCdPage() {
                     {!approved ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => approveMutation.mutate()}
                         loading={approveMutation.isPending}
                       >
@@ -745,6 +751,7 @@ export function RepositoryCdPage() {
                     ) : !pr ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => setPrOpen(true)}
                         loading={createPrMutation.isPending}
                       >

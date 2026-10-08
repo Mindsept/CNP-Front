@@ -1,3 +1,4 @@
+import { safeLoginDestination } from "@/lib/mcp-review";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -20,7 +21,8 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const next = params.get("next") ?? "/";
+  const requestedNext = params.get("next") ?? "/";
+  const next = safeLoginDestination(requestedNext);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -149,3 +149,7 @@ states, plus toast notifications for transient feedback.
 Any static host works (Vercel, Netlify, Cloudflare Pages…). Set
 `VITE_API_BASE_URL` to your production backend URL before running
 `npm run build`; the resulting `dist/` folder is what to serve.
+
+## MCP and human reviews
+
+See [the documentation index](docs/README.md) for consent, connections, review fallback, project policy, deployment progress, contracts and qualification. `npm test` exercises review gating and redirect safety (Node 22+). The full GitHub/AKS and Codex human acceptance recipe is documented separately from the local test results.
