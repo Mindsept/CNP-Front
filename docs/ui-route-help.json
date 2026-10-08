@@ -467,11 +467,6 @@
           "use": "Load current project and members"
         },
         {
-          "method": "PATCH",
-          "path": "/projects/:projectId",
-          "use": "Update project metadata"
-        },
-        {
           "method": "POST",
           "path": "/projects/:projectId/members",
           "use": "Add a member"
@@ -486,7 +481,8 @@
         "Project load fails",
         "Backend rejects update",
         "Member email missing",
-        "Member add fails or role is not allowed"
+        "Member add fails or role is not allowed",
+        "Limitation existante : le formulaire de modification vise un PATCH absent du contrat API livré."
       ],
       "help_topics": [
         "projects.settings.save",
