@@ -482,7 +482,7 @@
         "Backend rejects update",
         "Member email missing",
         "Member add fails or role is not allowed",
-        "Limitation existante : le formulaire de modification vise un PATCH absent du contrat API livré."
+        "Limitation existante : le formulaire de modification vise un PATCH absent du contrat API livr\u00e9."
       ],
       "help_topics": [
         "projects.settings.save",
@@ -1035,7 +1035,7 @@
         "user",
         "admin"
       ],
-      "purpose": "Generate, adapt, approve, and open a GitHub Actions CI workflow Pull Request.",
+      "purpose": "Read saved CI workflows, including MCP previews, and access human-reviewed PR publication.",
       "main_user_actions": [
         "View CI requirements",
         "Configure options",
@@ -1044,7 +1044,9 @@
         "Adapt with AI",
         "Approve workflow",
         "Create Pull Request",
-        "Manage project secrets"
+        "Manage project secrets",
+        "Select a saved preview",
+        "Open an existing human review"
       ],
       "related_api_endpoints": [
         {
@@ -1096,6 +1098,16 @@
           "method": "GET",
           "path": "/repositories/:repositoryId/ci",
           "use": "Refresh CI history"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/ci/:pipelineId",
+          "use": "Read saved CI YAML and publication metadata"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/:repositoryId/actions",
+          "use": "Read pipeline actions with pipeline_id and pagination"
         }
       ],
       "prerequisites": [
@@ -1103,7 +1115,7 @@
         "Repository is imported from GitHub",
         "Required project secrets are configured or intentionally deferred"
       ],
-      "success_state": "Preview YAML is shown, workflow can be approved, and a PR URL/branch is displayed after creation.",
+      "success_state": "Saved YAML survives reload; reviewed projects open the exact action review before publication. PR references appear only after publication.",
       "common_failure_states": [
         "Analysis prerequisite missing",
         "Requirements request fails",
@@ -1111,7 +1123,9 @@
         "Preview generation fails",
         "Approval fails",
         "Create PR fails",
-        "GitHub secret sync fails"
+        "GitHub secret sync fails",
+        "Saved preview read fails",
+        "Existing actions cannot be loaded"
       ],
       "help_topics": [
         "ci.requirements.view",
@@ -1634,13 +1648,13 @@
         }
       ],
       "prerequisites": [
-        "Compte CNP authentifié ; permissions serveur actuelles"
+        "Compte CNP authentifi\u00e9 ; permissions serveur actuelles"
       ],
-      "success_state": "Réponse API autorisée",
+      "success_state": "R\u00e9ponse API autoris\u00e9e",
       "common_failure_states": [
         "Session/CSRF invalides",
         "Permissions insuffisantes",
-        "Review expirée ou invalidée"
+        "Review expir\u00e9e ou invalid\u00e9e"
       ],
       "help_topics": []
     },
@@ -1653,7 +1667,7 @@
         "user",
         "admin"
       ],
-      "purpose": "Consulter et révoquer ses connexions MCP.",
+      "purpose": "Consulter et r\u00e9voquer ses connexions MCP.",
       "main_user_actions": [],
       "related_api_endpoints": [
         {
@@ -1666,13 +1680,13 @@
         }
       ],
       "prerequisites": [
-        "Compte CNP authentifié ; permissions serveur actuelles"
+        "Compte CNP authentifi\u00e9 ; permissions serveur actuelles"
       ],
-      "success_state": "Réponse API autorisée",
+      "success_state": "R\u00e9ponse API autoris\u00e9e",
       "common_failure_states": [
         "Session/CSRF invalides",
         "Permissions insuffisantes",
-        "Review expirée ou invalidée"
+        "Review expir\u00e9e ou invalid\u00e9e"
       ],
       "help_topics": []
     },
@@ -1694,13 +1708,13 @@
         }
       ],
       "prerequisites": [
-        "Compte CNP authentifié ; permissions serveur actuelles"
+        "Compte CNP authentifi\u00e9 ; permissions serveur actuelles"
       ],
-      "success_state": "Réponse API autorisée",
+      "success_state": "R\u00e9ponse API autoris\u00e9e",
       "common_failure_states": [
         "Session/CSRF invalides",
         "Permissions insuffisantes",
-        "Review expirée ou invalidée"
+        "Review expir\u00e9e ou invalid\u00e9e"
       ],
       "help_topics": []
     },
@@ -1726,13 +1740,13 @@
         }
       ],
       "prerequisites": [
-        "Compte CNP authentifié ; permissions serveur actuelles"
+        "Compte CNP authentifi\u00e9 ; permissions serveur actuelles"
       ],
-      "success_state": "Réponse API autorisée",
+      "success_state": "R\u00e9ponse API autoris\u00e9e",
       "common_failure_states": [
         "Session/CSRF invalides",
         "Permissions insuffisantes",
-        "Review expirée ou invalidée"
+        "Review expir\u00e9e ou invalid\u00e9e"
       ],
       "help_topics": []
     },
@@ -1754,13 +1768,13 @@
         }
       ],
       "prerequisites": [
-        "Compte CNP authentifié ; permissions serveur actuelles"
+        "Compte CNP authentifi\u00e9 ; permissions serveur actuelles"
       ],
-      "success_state": "Réponse API autorisée",
+      "success_state": "R\u00e9ponse API autoris\u00e9e",
       "common_failure_states": [
         "Session/CSRF invalides",
         "Permissions insuffisantes",
-        "Review expirée ou invalidée"
+        "Review expir\u00e9e ou invalid\u00e9e"
       ],
       "help_topics": []
     }

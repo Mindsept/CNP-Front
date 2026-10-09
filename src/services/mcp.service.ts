@@ -27,6 +27,8 @@ export const mcpService = {
   consent: (body: Record<string, unknown>) => browserPost<{ redirect_url: string }>(`${env.apiBaseUrl.replace(/\/api\/v1\/?$/, "")}/oauth/consent`, body),
   action: (id: string) => api.get<Action>(`/actions/${id}`),
   reviews: (offset = 0) => api.get<{ items: Action[]; next_offset: number | null }>(`/reviews?offset=${offset}`),
+  pipelineActions: (repositoryId: string, pipelineId: string, offset = 0) =>
+    api.get<{ items: Action[]; next_offset: number | null }>(`/repositories/${repositoryId}/actions?pipeline_id=${encodeURIComponent(pipelineId)}&offset=${offset}`),
   challenge: (id: string) => browserPost<Challenge>(`/reviews/${id}/challenge`),
   decide: (id: string, challenge: Challenge, decision: "accept" | "decline" | "cancel") =>
     browserPost<Action>(`/reviews/${id}/decision`, { challenge: challenge.challenge, fingerprint: challenge.fingerprint, decision }),

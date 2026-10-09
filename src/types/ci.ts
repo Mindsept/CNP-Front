@@ -58,12 +58,19 @@ export interface CiPipelinePreview {
   generation_mode: CiGenerationMode;
   workflow_path: string;
   generated_yaml: string;
-  explanation: string;
+  explanation: string | null;
   required_secrets: string[];
   detected_env_vars: EnvVarRequirement[];
   secret_mappings: CiResolvedSecretMapping[];
   missing_project_secrets: string[];
   github_secrets_to_sync: string[];
+  adapted_yaml?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  commit_sha?: string | null;
+  pull_request_url?: string | null;
+  pull_request_number?: number | null;
+  created_at?: string;
 }
 
 export interface CiAdaptInput {

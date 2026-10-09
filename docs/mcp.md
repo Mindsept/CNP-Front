@@ -41,6 +41,30 @@ Sur un projet activé, les boutons historiques d'approbation/publication directe
 
 ## Suivi et révocation
 
+### CI persistée et accès à sa review
+
+La page CI charge la liste des previews, puis le détail sauvegardé du pipeline
+sélectionné (paramètre `?pipeline=<UUID>`, sinon le plus récent). Elle affiche
+le YAML et les métadonnées sans régénérer, adapter, approuver ou publier.
+Le tab CI du dépôt fournit un lien **View workflow** pour chaque pipeline.
+
+**Human-reviewed operations** charge les actions persistées du pipeline, avec
+pagination et actualisation. **Review publication** ouvre l'action existante,
+y compris si une review native a été annulée et a laissé l'action `prepared`.
+Le bouton de préparation d'une publication est désactivé lorsqu'une publication
+active est déjà affichée. Les erreurs de lecture sont visibles et bloquent la
+préparation silencieuse d'un doublon. La page de review propose un retour vers
+la CI sauvegardée. Seule la décision explicite dans cette page peut approuver.
+
+Sur un projet activé, l'UI indique l'usage de GITHUB_TOKEN pour GHCR et masque
+les anciens boutons d'approbation directe. Les options réservées au parcours
+historique sont désactivées ; la génération examinée impose son modèle côté API.
+
+Correction observée le 9 octobre : chargement du pipeline
+`0c549d6d-7664-4ba3-ac1f-6885b65c570b`, YAML visible après rechargement et lien
+vers l'action `4f25d7f3-65f5-44f2-8791-33d12a2ddb72`. Build TypeScript/Vite réussi.
+Aucune approbation ni publication déclenchée pendant cette correction.
+
 Le parcours conserve les effets réalisés quand il est annulé. Une révocation de connexion bloque les étapes restantes, sans effacer PR, secrets synchronisés ou workload existant. Le suivi distingue dispatch, workflow, replicas et adresse publique. Un workflow réussi avec replicas indisponibles ou IP manquante n'est pas affiché comme application disponible.
 
 Les JSON/YAML/diffs sont rendus comme texte avec les composants existants ; aucun HTML issu du dépôt n'est exécuté. En cas d'erreur, le front utilise les toasts et codes CNP existants et renouvelle le challenge, sans réessayer une approbation silencieusement.
