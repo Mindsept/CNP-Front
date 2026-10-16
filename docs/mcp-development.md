@@ -21,8 +21,6 @@ npm run build
 
 Les tests utilisent le runner Node et demandent Node 22+ pour les sources TypeScript sans compilation séparée. Quatre tests ont réussi : absence d'accusé implicite, action courante explicitement reconnue, expiration/changement/consommation/chargement, et sécurité du redirect de login. Le build TypeScript/Vite a réussi ; l'avertissement de taille du bundle reste présent.
 
-Le 8 octobre 2026, login de démonstration et page Connections ont été observés dans le navigateur intégré, avec un grant de qualification en lecture. Ce grant a ensuite été révoqué par le nettoyage HTTP. Aucune review critique réelle n'a été acceptée automatiquement dans le navigateur.
-
 ## Recette navigateur à enregistrer
 
 | Scénario | Attendu |
@@ -38,7 +36,7 @@ Le 8 octobre 2026, login de démonstration et page Connections ont été observ�
 | Révocation pendant parcours | Étapes futures bloquées, effets anciens conservés |
 | Workflow réussi et IP absente | État pending, pas de succès public inventé |
 
-La recette complète GitHub/AKS et Codex attend un environnement isolé configuré ; voir le backend `docs/mcp/qualification.md`. Le nouveau dépôt de test `Lxdro/cnp-mcp-hello-sam` attend sa connexion GitHub App et une cible AKS. Ne pas confondre les tests de fonctions UI avec une recette de clics complète.
+La qualification backend décrit les résultats GitHub/AKS réellement observés et les limites de production. Les tests de fonctions UI ne prouvent pas un parcours de clics complet.
 
 ## Export des routes pour le serveur docs
 
@@ -49,3 +47,11 @@ node scripts/export-ui-routes.mjs ../CNP-MCP-SERVER/frontroutes
 ```
 
 Les exports ne doivent pas être édités à la main. Une modification de route ou d'interface HTTP implique de mettre à jour l'aide dans le dépôt responsable puis de régénérer le bundle.
+
+## Restauration des pipelines CD
+
+La page CD sélectionne `?pipeline=<UUID>` ou le dernier pipeline disponible, charge son détail par GET et rend les fichiers sauvegardés ainsi que ses actions existantes. Rechargement et sélection ne créent aucun pipeline. Les erreurs de chargement sont visibles et empêchent une régénération accidentelle. Les anciennes actions restent accessibles même après suppression de la cible de démonstration.
+
+Le 16 octobre 2026, ouverture du pipeline créé par MCP, rechargement, sélection d’un autre pipeline sauvegardé et retour ont été vérifiés dans le navigateur. Les liens des actions de publication/fusion/déploiement et le YAML sont visibles ; aucune régénération ou décision automatique n’a été déclenchée. Le build TypeScript/Vite et les quatre tests existants réussissent. Le warning de taille de bundle est conservé, hors périmètre MCP.
+
+`npm run lint` est actuellement bloqué : ESLint 9 ne trouve aucune configuration flat dans le dépôt, y compris sur la branche de référence. Cette livraison ne migre pas l’outillage ESLint ; le build TypeScript/Vite, les tests et la recette navigateur sont vérifiés séparément.

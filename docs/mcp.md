@@ -60,11 +60,10 @@ Sur un projet activé, l'UI indique l'usage de GITHUB_TOKEN pour GHCR et masque
 les anciens boutons d'approbation directe. Les options réservées au parcours
 historique sont désactivées ; la génération examinée impose son modèle côté API.
 
-Correction observée le 9 octobre : chargement du pipeline
-`0c549d6d-7664-4ba3-ac1f-6885b65c570b`, YAML visible après rechargement et lien
-vers l'action `4f25d7f3-65f5-44f2-8791-33d12a2ddb72`. Build TypeScript/Vite réussi.
-Aucune approbation ni publication déclenchée pendant cette correction.
-
 Le parcours conserve les effets réalisés quand il est annulé. Une révocation de connexion bloque les étapes restantes, sans effacer PR, secrets synchronisés ou workload existant. Le suivi distingue dispatch, workflow, replicas et adresse publique. Un workflow réussi avec replicas indisponibles ou IP manquante n'est pas affiché comme application disponible.
 
 Les JSON/YAML/diffs sont rendus comme texte avec les composants existants ; aucun HTML issu du dépôt n'est exécuté. En cas d'erreur, le front utilise les toasts et codes CNP existants et renouvelle le challenge, sans réessayer une approbation silencieusement.
+
+## CD persistée et OIDC
+
+La page CD restaure les previews via `?pipeline=<UUID>` ou le plus récent. Les fichiers et opérations examinées peuvent être consultés après une création MCP ou un rechargement, sans régénération. Les projets activés utilisent Azure OIDC préconfiguré ; aucun client secret Azure ni kubeconfig à exporter n’est demandé. La fusion CD ne déclenche pas le déploiement : celui-ci conserve sa propre review. Le suivi du parcours examiné passe par les actions MCP ; l’ancien bloc de suivi CD automatique n’est pas affiché pour ces projets.

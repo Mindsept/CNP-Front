@@ -1199,7 +1199,7 @@
         "user",
         "admin"
       ],
-      "purpose": "Generate Kubernetes manifests and a GitHub Actions CD workflow, approve them, open a PR, and refresh deployment status.",
+      "purpose": "Read saved CD previews and prepare separately reviewed publication, merge and deployment on MCP-enabled projects.",
       "main_user_actions": [
         "View CD requirements",
         "Select cloud target",
@@ -1256,6 +1256,10 @@
           "method": "POST",
           "path": "/repositories/:repositoryId/cd/:pipelineId/refresh-deployment",
           "use": "Refresh deployment status from cluster"
+        },
+        {
+          "method": "GET",
+          "path": "/repositories/{repository_id}/cd/{cd_pipeline_id}"
         }
       ],
       "prerequisites": [
