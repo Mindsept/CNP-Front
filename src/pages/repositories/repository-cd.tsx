@@ -44,7 +44,7 @@ import {
   DeploymentStatusBadge,
   deploymentStatusMeta,
 } from "@/components/cd/deployment-status-badge";
-import { AzureLogo, GhcrLogo } from "@/components/common/provider-logos";
+import { AwsLogo, AzureLogo, GhcrLogo } from "@/components/common/provider-logos";
 import { repositoryService } from "@/services/repository.service";
 import { cdService } from "@/services/cd.service";
 import { containerRegistryService } from "@/services/container-registry.service";
@@ -126,6 +126,7 @@ export function RepositoryCdPage() {
     useState("ghcr-pull-secret");
   const [autoMap, setAutoMap] = useState(true);
   const [mappings, setMappings] = useState<CdSecretMapping[]>([]);
+  const [databaseSecretKey, setDatabaseSecretKey] = useState("");
 
   const [preview, setPreview] = useState<CdPreview | null>(null);
   const [approved, setApproved] = useState(false);
@@ -148,6 +149,16 @@ export function RepositoryCdPage() {
     }
     const suggested = new Map(
       requirements.suggested_mappings.map((m) => [m.env_name, m]),
+    );
+    const databaseKeys = (requirements.configured_cd_secret_keys ?? []).filter(
+      (key) => key === "DATABASE_URL" || key.startsWith("DATABASE_URL_"),
+    );
+    setDatabaseSecretKey((current) =>
+      current && databaseKeys.includes(current)
+        ? current
+        : databaseKeys.includes("DATABASE_URL")
+          ? "DATABASE_URL"
+          : databaseKeys[0] ?? "",
     );
     setMappings(
       requirements.detected_env_vars
@@ -194,6 +205,28 @@ export function RepositoryCdPage() {
     },
     onError: (err) => onError(err, "Could not generate CD preview"),
   });
+
+  const databaseSecretKeys = (requirementsQuery.data?.configured_cd_secret_keys ?? []).filter(
+    (key) => key === "DATABASE_URL" || key.startsWith("DATABASE_URL_"),
+  );
+  const databaseMapping = mappings.find((mapping) => mapping.env_name === "DATABASE_URL");
+
+  function mapDatabaseSecret() {
+    if (!databaseSecretKey) return;
+    setMappings((current) => {
+      const mapping: CdSecretMapping = {
+        env_name: "DATABASE_URL",
+        project_secret_key: databaseSecretKey,
+        github_secret_name: "DATABASE_URL",
+        kubernetes_secret_name: "app-secrets",
+      };
+      return [...current.filter((item) => item.env_name !== "DATABASE_URL"), mapping];
+    });
+  }
+
+  function unmapDatabaseSecret() {
+    setMappings((current) => current.filter((item) => item.env_name !== "DATABASE_URL"));
+  }
 
   const approveMutation = useMutation({
     mutationFn: () => cdService.approve(id, preview!.cd_pipeline_id),
@@ -266,6 +299,15 @@ export function RepositoryCdPage() {
   const deployment = deploymentQuery.data;
 
   const hasCloudTargets = (requirements?.cloud_targets.length ?? 0) > 0;
+  const selectedTarget = requirements?.cloud_targets.find(
+    (target) => target.id === cloudTargetId,
+  );
+  const clusterLabel = selectedTarget
+    ? selectedTarget.cluster_type.toUpperCase()
+    : "Kubernetes";
+  const providerLabel = selectedTarget
+    ? selectedTarget.provider.toUpperCase()
+    : "cloud";
 
   // Effective configured CD secrets (project + global registry/cloud node).
   const configuredCdKeys = useMemo(
@@ -313,7 +355,7 @@ export function RepositoryCdPage() {
           label: repoQuery.data?.full_name ?? "repository",
         }}
         title="CD workflow"
-        description="Generate Kubernetes manifests and a GitHub Actions deploy workflow for Azure AKS. Deployment happens after the generated PR is merged to main."
+        description={`Generate Kubernetes manifests and a GitHub Actions deploy workflow for the selected ${providerLabel} ${clusterLabel} target. Deployment happens after the generated PR is merged to main.`}
         actions={
           <Button
             onClick={() => previewMutation.mutate()}
@@ -338,7 +380,7 @@ export function RepositoryCdPage() {
         <EmptyState
           icon={Cloud}
           title="No cloud node configured"
-          description="Ask a platform admin to register an AKS cluster for this project before generating a CD pipeline."
+          description="Ask a platform admin to register an AWS EKS or Azure AKS cluster before generating a CD pipeline."
         />
       ) : (
         <>
@@ -360,6 +402,8 @@ export function RepositoryCdPage() {
                           <span className="flex items-center gap-2">
                             {t.provider === "azure" ? (
                               <AzureLogo className="h-3.5 w-3.5 shrink-0" />
+                            ) : t.provider === "aws" ? (
+                              <AwsLogo className="h-3.5 w-3.5 shrink-0" />
                             ) : null}
                             <span>
                               {t.name} · {t.cluster_name} ({t.region})
@@ -396,14 +440,21 @@ export function RepositoryCdPage() {
                   />
                 </FieldBlock>
 
-                <FieldBlock label="Image tag">
-                  <Input
-                    value={imageTag}
-                    onChange={(e) => setImageTag(e.target.value)}
-                    className="font-mono text-sm"
-                    placeholder="latest"
-                  />
-                </FieldBlock>
+                <div>
+                  <FieldBlock label={selectedTarget?.provider === "aws" ? "Image tag (commit SHA from CI)" : "Image tag"}>
+                    <Input
+                      value={imageTag}
+                      onChange={(e) => setImageTag(e.target.value)}
+                      className="font-mono text-sm"
+                      placeholder={selectedTarget?.provider === "aws" ? "e.g. 0b167ac..." : "latest"}
+                    />
+                  </FieldBlock>
+                  {selectedTarget?.provider === "aws" ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      AWS requires the exact image tag pushed by CI. Use the commit SHA from the successful GitHub Actions run, not <code>latest</code>.
+                    </p>
+                  ) : null}
+                </div>
 
                 <FieldBlock label="Container port">
                   <Input
@@ -449,7 +500,7 @@ export function RepositoryCdPage() {
                   </Select>
                 </FieldBlock>
 
-                <FieldBlock label="Kubeconfig strategy">
+                {selectedTarget?.provider !== "aws" ? <FieldBlock label="Kubeconfig strategy">
                   <Select
                     value={kubeconfigStrategy}
                     onValueChange={(v) =>
@@ -468,7 +519,11 @@ export function RepositoryCdPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </FieldBlock>
+                </FieldBlock> : (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                    AWS authentication uses the EKS Cloud Node&apos;s CD role through GitHub OIDC.
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 space-y-3">
@@ -709,6 +764,43 @@ export function RepositoryCdPage() {
             </SectionCard>
           ) : null}
 
+          {databaseSecretKeys.length > 0 ? (
+            <SectionCard
+              title="RDS database connection"
+              description="Inject a database connection secret into the application as DATABASE_URL. The password stays encrypted in CNP and GitHub Actions."
+            >
+              <div className="flex flex-wrap items-end gap-3">
+                <FieldBlock label="Project database secret">
+                  <Select value={databaseSecretKey} onValueChange={setDatabaseSecretKey}>
+                    <SelectTrigger className="min-w-64">
+                      <SelectValue placeholder="Choose an RDS connection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {databaseSecretKeys.map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {key}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+                {databaseMapping ? (
+                  <Button type="button" variant="outline" onClick={unmapDatabaseSecret}>
+                    Remove DATABASE_URL mapping
+                  </Button>
+                ) : null}
+                <Button type="button" onClick={mapDatabaseSecret} disabled={!databaseSecretKey}>
+                  {databaseMapping ? "Update mapping" : "Connect as DATABASE_URL"}
+                </Button>
+              </div>
+              {databaseMapping ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  <code>DATABASE_URL</code> will be available to the deployed container from project secret <code>{databaseMapping.project_secret_key}</code>.
+                </p>
+              ) : null}
+            </SectionCard>
+          ) : null}
+
           {!preview ? (
             <EmptyState
               icon={Rocket}
@@ -903,7 +995,7 @@ export function RepositoryCdPage() {
                     <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                     <p className="text-muted-foreground">
                       Preview is read-only. Approve, then open a PR. Deployment
-                      to AKS happens after the PR is merged to main.
+                      to {clusterLabel} happens after the PR is merged to main.
                     </p>
                   </Card>
                 )}
@@ -914,7 +1006,7 @@ export function RepositoryCdPage() {
           {deployablePipelineId ? (
             <SectionCard
               title="Deployment"
-              description="Live status of this repository on the AKS cluster. Deployment happens after the CD PR is merged to main."
+              description={`Live status of this repository on the ${clusterLabel} cluster. Deployment happens after the CD PR is merged to main.`}
               actions={
                 <Button
                   size="sm"
@@ -1106,6 +1198,7 @@ export function RepositoryCdPage() {
       <CdCreatePrDialog
         open={prOpen}
         defaultBranch={repoQuery.data?.default_branch ?? "main"}
+        provider={selectedTarget?.provider}
         loading={createPrMutation.isPending}
         onOpenChange={setPrOpen}
         onSubmit={(input) => createPrMutation.mutate(input)}

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  CheckCircle2,
   Plus,
   Server,
   ShieldAlert,
@@ -13,6 +12,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { SectionCard } from "@/components/common/section-card";
+import { ProviderCard } from "@/components/common/provider-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -220,7 +220,7 @@ export function PlatformInfrastructurePage() {
       {/* Cloud nodes */}
       <SectionCard
         title="Cloud Nodes"
-        description="Global Kubernetes clusters available to every project's CD pipeline."
+        description="Global clusters already provisioned and registered from their cnp_cd_contract. New project environments are provisioned from the project deployment flow."
         actions={
           <Button onClick={() => setNodeOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -242,8 +242,11 @@ export function PlatformInfrastructurePage() {
             logo={<AwsLogo className="h-6 w-6" />}
             name="Amazon EKS"
             subtitle="aws · eks"
-            comingSoon
-          />
+            enabled
+            configured={nodes.some((node) => node.provider === "aws" && node.cluster_type === "eks")}
+          >
+            <Badge variant="success">Enabled</Badge>
+          </ProviderCard>
           <ProviderCard
             logo={<GcpLogo className="h-6 w-6" />}
             name="Google GKE"
@@ -293,8 +296,7 @@ export function PlatformInfrastructurePage() {
             />
           ) : nodes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No global cloud node yet. Register the first AKS cluster by pasting
-              the cnp_cd_contract JSON from Terraform/OpenTofu.
+              Aucun Cloud Node global. Enregistrez un cluster AKS ou EKS en important son cnp_cd_contract Terraform/OpenTofu.
             </p>
           ) : (
             <ul className="divide-y divide-border/60">
@@ -303,7 +305,7 @@ export function PlatformInfrastructurePage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <AzureLogo className="h-4 w-4" />
+                        {t.provider === "aws" ? <AwsLogo className="h-4 w-4" /> : t.provider === "gcp" ? <GcpLogo className="h-4 w-4" /> : <AzureLogo className="h-4 w-4" />}
                         <p className="text-sm font-semibold text-foreground">
                           {t.name}
                         </p>
@@ -356,53 +358,6 @@ export function PlatformInfrastructurePage() {
         onSubmit={(input) => cloudNodeMutation.mutate(input)}
       />
     </div>
-  );
-}
-
-function ProviderCard({
-  logo,
-  name,
-  subtitle,
-  enabled,
-  configured,
-  comingSoon,
-  children,
-}: {
-  logo: React.ReactNode;
-  name: string;
-  subtitle: string;
-  enabled?: boolean;
-  configured?: boolean;
-  comingSoon?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <Card
-      className={`space-y-3 p-4 ${comingSoon ? "opacity-60" : ""}`}
-      aria-disabled={comingSoon}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/60">
-          {logo}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {name}
-          </p>
-          <p className="truncate font-mono text-[11px] text-muted-foreground">
-            {subtitle}
-          </p>
-        </div>
-        {enabled && configured ? (
-          <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-success" />
-        ) : null}
-      </div>
-      {comingSoon ? (
-        <Badge variant="muted">Coming soon</Badge>
-      ) : (
-        children
-      )}
-    </Card>
   );
 }
 

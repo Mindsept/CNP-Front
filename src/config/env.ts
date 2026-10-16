@@ -6,7 +6,7 @@ interface AppEnv {
 function readEnv(): AppEnv {
   const apiBaseUrl =
     import.meta.env.VITE_API_BASE_URL?.trim() ||
-    "http://localhost:8000/api/v1";
+    (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
   const appName =
     import.meta.env.VITE_APP_NAME?.trim() || "Cloud Native Platform";
 

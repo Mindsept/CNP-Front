@@ -24,6 +24,9 @@ import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
 
+import { AwsEnvironmentPage } from "@/pages/projects/aws-environment";
+import { AzureEnvironmentPage } from "@/pages/projects/azure-environment";
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -39,9 +42,12 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: "/", element: <DashboardPage /> },
+          { path: "/databases", element: <Navigate to="/admin/infrastructure" replace /> },
 
           { path: "/projects", element: <ProjectsListPage /> },
           { path: "/projects/:projectId", element: <ProjectDetailPage /> },
+          { path: "/projects/:projectId/aws-environment", element: <AwsEnvironmentPage /> },
+          { path: "/projects/:projectId/azure-environment", element: <AzureEnvironmentPage /> },
           {
             path: "/projects/:projectId/settings",
             element: <ProjectSettingsPage />,
