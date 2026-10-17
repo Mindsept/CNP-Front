@@ -1,46 +1,33 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
-import { ArrowRight } from "lucide-react";
+import { Navigate, useSearchParams } from "react-router-dom";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useToastError } from "@/hooks/use-toast-error";
+import { safeReturnTo } from "@/auth/navigation";
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { login } = useAuth();
+  const { isAuthenticated, isIdentityAuthenticated, isLoading, error, login, logout, retryProfile } = useAuth();
   const onError = useToastError();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const next = params.get("next") ?? "/";
+  const next = safeReturnTo(params.get("next"));
+  const sessionExpired = params.get("reason") === "session-expired";
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setFieldError(null);
-
-    if (!email || !password) {
-      setFieldError("Email and password are required.");
-      return;
-    }
-
+  async function handleLogin() {
     setSubmitting(true);
     try {
-      const user = await login({ email: email.trim(), password });
-      toast.success(`Welcome back, ${user.full_name?.split(" ")[0] ?? "developer"}`);
-      navigate(next, { replace: true });
+      await login(next);
     } catch (err) {
-      onError(err, "Could not sign in");
-    } finally {
+      onError(err, "Could not start the secure sign-in flow");
       setSubmitting(false);
     }
+  }
+
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to={next} replace />;
   }
 
   return (
@@ -53,60 +40,50 @@ export function LoginPage() {
           Welcome to your platform
         </h1>
         <p className="text-sm text-muted-foreground">
-          Use your work email to access projects, repositories and CI workflows.
+          Continue to the CNP identity provider. Keycloak handles your password
+          and authenticator code securely.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <span className="text-xs text-muted-foreground">8+ characters</span>
+      <div className="space-y-4">
+        {isIdentityAuthenticated && error ? (
+          <div role="alert" className="space-y-3 rounded-md border p-4">
+            <p>{error.message}</p>
+            <Button onClick={() => void retryProfile()}>Retry CNP profile</Button>
+            <Button variant="outline" onClick={() => void logout()}>Sign out</Button>
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        {fieldError ? (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {fieldError}
+        ) : null}
+        {sessionExpired ? (
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
+            Your session expired. Sign in again to continue.
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full" loading={submitting} size="lg">
-          Sign in
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/50 p-4">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Secure sign-in with Keycloak</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              You will be redirected for username or email, password and MFA.
+              CNP never receives your password or TOTP secret.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          className="w-full"
+          loading={submitting || isLoading}
+          size="lg"
+          onClick={() => void handleLogin()}
+        >
+          Continue to sign in
           {!submitting ? <ArrowRight className="h-4 w-4" /> : null}
         </Button>
-      </form>
+      </div>
 
       <div className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link
-          to="/register"
-          className="font-medium text-primary hover:underline"
-        >
-          Create one
-        </Link>
+        Account creation is currently managed by the CNP administrator.
       </div>
     </div>
   );

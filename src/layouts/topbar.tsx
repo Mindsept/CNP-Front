@@ -31,8 +31,7 @@ export function Topbar() {
   const navigate = useNavigate();
 
   function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
+    void logout();
   }
 
   return (

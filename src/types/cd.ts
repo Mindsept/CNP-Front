@@ -29,7 +29,7 @@ export interface CdResolvedSecretMapping extends CdSecretMapping {
   project_secret_configured: boolean;
 }
 
-export interface CdSuggestedMapping extends CdResolvedSecretMapping {}
+export type CdSuggestedMapping = CdResolvedSecretMapping;
 
 export interface CdRequirements {
   repository_id: string;
