@@ -16,6 +16,9 @@ import type {
 } from "@/types/ci";
 
 export const ciService = {
+  get(repositoryId: string, pipelineId: string): Promise<CiPipelinePreview> {
+    return api.get<CiPipelinePreview>(`/repositories/${repositoryId}/ci/${pipelineId}`);
+  },
   requirements(repositoryId: string): Promise<CiRequirements> {
     return api.get<CiRequirements>(
       `/repositories/${repositoryId}/ci/requirements`,

@@ -1,5 +1,7 @@
+import { mcpService } from "@/services/mcp.service";
+import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -48,6 +50,7 @@ export function RepositoryCiPage() {
   const id = repositoryId!;
   const onError = useToastError();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const repoQuery = useQuery({
     queryKey: ["repository", id],
@@ -90,12 +93,37 @@ export function RepositoryCiPage() {
   const [registry, setRegistry] = useState("ghcr.io");
   const [secretMappings, setSecretMappings] = useState<CiSecretMapping[]>([]);
 
-  const [preview, setPreview] = useState<CiPipelinePreview | null>(null);
+  const pipelinesQuery = useQuery({
+    queryKey: ["repository", id, "ci"],
+    queryFn: () => ciService.list(id),
+    enabled: Boolean(repoQuery.data),
+    refetchInterval: 10000,
+  });
+  const selectedPipelineId = searchParams.get("pipeline") ?? pipelinesQuery.data?.items[0]?.id;
+  const persistedPreview = useQuery({
+    queryKey: ["repository", id, "ci", selectedPipelineId],
+    queryFn: () => ciService.get(id, selectedPipelineId!),
+    enabled: Boolean(repoQuery.data && selectedPipelineId),
+    refetchInterval: 5000,
+  });
+  const [localPreview, setPreview] = useState<CiPipelinePreview | null>(null);
+  const preview = persistedPreview.data ??
+    (localPreview?.ci_pipeline_id === selectedPipelineId ? localPreview : null);
   const [adapted, setAdapted] = useState<CiAdaptResponse | null>(null);
+  const reviewedPolicy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
+  const reviewed = Boolean(reviewedPolicy.data?.enabled);
   const [approved, setApproved] = useState(false);
   const [pr, setPr] = useState<CiCreatePrResponse | null>(null);
   const [adaptOpen, setAdaptOpen] = useState(false);
   const [prOpen, setPrOpen] = useState(false);
+
+  useEffect(() => {
+    setAdapted(null);
+    setApproved(false);
+    setPr(null);
+    setAdaptOpen(false);
+    setPrOpen(false);
+  }, [id, selectedPipelineId]);
 
   useEffect(() => {
     const requirements = requirementsQuery.data;
@@ -131,17 +159,18 @@ export function RepositoryCiPage() {
       ciService.preview(id, {
         mode: "deterministic",
         provider: "github_actions",
-        include_docker_build: includeDocker,
-        include_docker_push_on_main: includePush,
-        registry,
-        explain_with_ai: explainAi,
-        auto_map_project_secrets: true,
+        include_docker_build: reviewed || includeDocker,
+        include_docker_push_on_main: reviewed || includePush,
+        registry: reviewed ? "ghcr.io" : registry,
+        explain_with_ai: reviewed ? false : explainAi,
+        auto_map_project_secrets: !reviewed,
         secret_mappings: secretMappings.filter(
           (m) => m.env_name && m.project_secret_key,
         ),
       }),
     onSuccess: (data) => {
       setPreview(data);
+      setSearchParams({ pipeline: data.ci_pipeline_id }, { replace: true });
       setAdapted(null);
       setApproved(false);
       setPr(null);
@@ -167,7 +196,7 @@ export function RepositoryCiPage() {
   const approveMutation = useMutation({
     mutationFn: () =>
       ciService.approve(id, preview!.ci_pipeline_id, {
-        use_adapted_yaml: Boolean(adapted),
+        use_adapted_yaml: Boolean(adapted || preview?.status === "adapted" && preview.adapted_yaml),
       }),
     onSuccess: () => {
       setApproved(true);
@@ -189,7 +218,8 @@ export function RepositoryCiPage() {
     onError: (err) => onError(err, "Could not open the Pull Request"),
   });
 
-  const activeYaml = adapted?.adapted_yaml ?? preview?.generated_yaml ?? "";
+  const activeYaml = adapted?.adapted_yaml ??
+    (preview?.status === "adapted" ? preview.adapted_yaml : null) ?? preview?.generated_yaml ?? "";
   const activeExplanation = adapted?.explanation ?? preview?.explanation ?? "";
 
   const requiredSecrets = preview?.required_secrets ?? [];
@@ -235,6 +265,7 @@ export function RepositoryCiPage() {
 
   return (
     <div className="space-y-8">
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Workflow}
@@ -248,13 +279,33 @@ export function RepositoryCiPage() {
           <Button
             onClick={() => previewMutation.mutate()}
             loading={previewMutation.isPending}
-            disabled={!hasAnalysis}
+            disabled={!hasAnalysis || pipelinesQuery.isLoading || Boolean(selectedPipelineId) && persistedPreview.isLoading || reviewedPolicy.isPending || reviewedPolicy.isError}
           >
             <Workflow className="h-4 w-4" />
             {preview ? "Regenerate preview" : "Generate CI preview"}
           </Button>
         }
       />
+
+      {pipelinesQuery.data && pipelinesQuery.data.items.length > 0 && (
+        <SectionCard title="Saved CI previews" description="Previews created in CNP or by your MCP client are available here.">
+          <div className="flex flex-wrap gap-3">
+            {pipelinesQuery.data.items.map(p => (
+              <Button key={p.id} variant={p.id === selectedPipelineId ? "default" : "outline"} asChild>
+                <Link to={`/repositories/${id}/ci?pipeline=${p.id}`}>
+                  {p.workflow_path} · {p.status} · {new Date(p.created_at).toLocaleString()}
+                </Link>
+              </Button>
+            ))}
+          </div>
+          {preview?.pull_request_url && <a className="mt-3 block text-primary" href={preview.pull_request_url} target="_blank" rel="noreferrer">View PR #{preview.pull_request_number}</a>}
+        </SectionCard>
+      )}
+      {(pipelinesQuery.isError || persistedPreview.isError) && <ErrorState
+        title="Could not load the saved CI preview"
+        error={pipelinesQuery.error ?? persistedPreview.error}
+        onRetry={() => { void pipelinesQuery.refetch(); void persistedPreview.refetch(); }}
+      />}
 
       {repoQuery.isLoading ? (
         <LoadingState rows={3} />
@@ -279,7 +330,9 @@ export function RepositoryCiPage() {
         />
       ) : (
         <>
-          {hasSharedRegistry ? (
+          {reviewed ? (
+            <Card className="p-4 text-sm">Reviewed CI builds on PRs and publishes to GHCR on the default branch using GitHub's repository token. No global registry credential is synchronized.</Card>
+          ) : hasSharedRegistry ? (
             <Card className="flex items-start gap-3 border-success/30 bg-success/5 p-4 text-sm">
               <GhcrLogo className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex-1">
@@ -312,29 +365,32 @@ export function RepositoryCiPage() {
                   id="opt-docker"
                   label="Build Docker image"
                   description="Adds a docker buildx build step in CI."
-                  checked={includeDocker}
+                  checked={reviewed || includeDocker}
                   onChange={setIncludeDocker}
+                  disabled={reviewed}
                 />
                 <OptionRow
                   id="opt-push"
                   label="Push image on main"
                   description="Push to the configured registry when main is updated."
-                  checked={includePush}
+                  checked={reviewed || includePush}
                   onChange={setIncludePush}
-                  disabled={!includeDocker}
+                  disabled={reviewed || !includeDocker}
                 />
                 <OptionRow
                   id="opt-ai"
                   label="Explain with AI"
                   description="Ask the AI to produce a human-readable explanation."
-                  checked={explainAi}
+                  checked={!reviewed && explainAi}
                   onChange={setExplainAi}
+                  disabled={reviewed}
                 />
                 <div className="space-y-2">
                   <Label htmlFor="opt-registry">Registry</Label>
                   <Input
                     id="opt-registry"
-                    value={registry}
+                    value={reviewed ? "ghcr.io" : registry}
+                    disabled={reviewed}
                     onChange={(e) => setRegistry(e.target.value)}
                     className="font-mono text-sm"
                   />
@@ -356,7 +412,7 @@ export function RepositoryCiPage() {
                         : adapted
                           ? "adapted"
                           : preview
-                            ? "generated"
+                            ? preview.status
                             : "draft"
                   }
                 />
@@ -372,12 +428,12 @@ export function RepositoryCiPage() {
                   label="Preview generated"
                 />
                 <StepLine
-                  done={Boolean(adapted)}
+                  done={Boolean(adapted || preview?.adapted_yaml)}
                   optional
                   label="Adapted with AI"
                 />
-                <StepLine done={approved} label="Approved" />
-                <StepLine done={Boolean(pr)} label="Pull Request opened" />
+                {!reviewed && <StepLine done={approved || Boolean(preview?.approved_by)} label="Approved" />}
+                <StepLine done={Boolean(pr || preview?.pull_request_url)} label="Pull Request opened" />
               </div>
             </Card>
 
@@ -560,7 +616,9 @@ export function RepositoryCiPage() {
             </Card>
           ) : null}
 
-          {!preview ? (
+          {(pipelinesQuery.isLoading || Boolean(selectedPipelineId) && persistedPreview.isLoading) ? (
+            <LoadingState rows={3} />
+          ) : !preview && !pipelinesQuery.isError && !persistedPreview.isError ? (
             <EmptyState
               icon={Workflow}
               title="No preview yet"
@@ -575,41 +633,44 @@ export function RepositoryCiPage() {
                 </Button>
               }
             />
-          ) : (
+          ) : preview ? (
             <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                    {adapted ? "Adapted YAML" : "Generated YAML"}
+                    {adapted || preview.status === "adapted" ? "Adapted YAML" : "Generated YAML"}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={reviewed || reviewedPolicy.isPending || reviewedPolicy.isError}
                       onClick={() => setAdaptOpen(true)}
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       Ask AI to adapt
                     </Button>
-                    {!approved ? (
+                    {!reviewed && !approved && !preview.approved_by ? (
                       <Button
                         size="sm"
+                        disabled={reviewedPolicy.isPending || reviewedPolicy.isError}
                         onClick={() => approveMutation.mutate()}
                         loading={approveMutation.isPending}
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Approve
                       </Button>
-                    ) : !pr ? (
+                    ) : !reviewed && !pr && !preview.pull_request_url ? (
                       <Button
                         size="sm"
+                        disabled={reviewedPolicy.isPending || reviewedPolicy.isError}
                         onClick={() => setPrOpen(true)}
                         loading={createPrMutation.isPending}
                       >
                         <GitPullRequest className="h-3.5 w-3.5" />
                         Open Pull Request
                       </Button>
-                    ) : (
+                    ) : pr ? (
                       <Button size="sm" variant="outline" asChild>
                         <a
                           href={pr.pull_request_url}
@@ -620,7 +681,9 @@ export function RepositoryCiPage() {
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       </Button>
-                    )}
+                    ) : reviewed ? (
+                      <Button size="sm" variant="outline" asChild><Link to="/mcp/reviews">Open human reviews</Link></Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -691,18 +754,19 @@ export function RepositoryCiPage() {
                   </Card>
                 ) : null}
 
-                {!approved && !pr ? (
+                {!approved && !pr && !preview.pull_request_url ? (
                   <Card className="flex items-start gap-3 border-info/30 bg-info/5 p-4 text-sm">
                     <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                     <p className="text-muted-foreground">
-                      Review the workflow, optionally adapt it with AI, then
-                      approve before opening a Pull Request.
+                      {reviewed
+                        ? "Open the existing publication action above to examine the exact diff and give your decision. Regenerating creates a different preview."
+                        : "Review the workflow, optionally adapt it with AI, then approve before opening a Pull Request."}
                     </p>
                   </Card>
                 ) : null}
               </div>
             </div>
-          )}
+          ) : null}
         </>
       )}
 

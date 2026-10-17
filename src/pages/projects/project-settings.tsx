@@ -1,3 +1,4 @@
+import { McpPolicySettings } from "@/components/mcp/policy-settings";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -105,6 +106,7 @@ export function ProjectSettingsPage() {
 
   return (
     <div className="space-y-8">
+      <McpPolicySettings projectId={id} />
       <PageHeader
         eyebrow={`/${project.slug}`}
         back={{ to: `/projects/${id}`, label: project.name }}

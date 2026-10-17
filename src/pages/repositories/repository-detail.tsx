@@ -271,6 +271,9 @@ export function RepositoryDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <CiStatusBadge status={p.status} />
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to={`/repositories/${id}/ci?pipeline=${p.id}`}>View workflow</Link>
+                      </Button>
                       {p.pull_request_url ? (
                         <Button size="sm" variant="ghost" asChild>
                           <a

@@ -23,6 +23,15 @@ import { PlatformInfrastructurePage } from "@/pages/admin/platform-infrastructur
 import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
+import {
+  OidcCallbackPage,
+  OidcLogoutCallbackPage,
+} from "@/pages/oidc-callback";
+
+import { McpConsentPage } from "@/pages/mcp/consent";
+import { McpConnectionsPage } from "@/pages/mcp/connections";
+import { McpReviewsPage, McpReviewPage } from "@/pages/mcp/reviews";
+import { McpRunPage } from "@/pages/mcp/run";
 
 import { AwsEnvironmentPage } from "@/pages/projects/aws-environment";
 import { AzureEnvironmentPage } from "@/pages/projects/azure-environment";
@@ -35,6 +44,8 @@ export const router = createBrowserRouter([
       { path: "/register", element: <RegisterPage /> },
     ],
   },
+  { path: "/auth/callback", element: <OidcCallbackPage /> },
+  { path: "/auth/logout/callback", element: <OidcLogoutCallbackPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -43,6 +54,11 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <DashboardPage /> },
           { path: "/databases", element: <Navigate to="/admin/infrastructure" replace /> },
+          { path: "/mcp/consent", element: <McpConsentPage /> },
+          { path: "/mcp/connections", element: <McpConnectionsPage /> },
+          { path: "/mcp/reviews", element: <McpReviewsPage /> },
+          { path: "/mcp/reviews/:actionId", element: <McpReviewPage /> },
+          { path: "/mcp/runs/:runId", element: <McpRunPage /> },
 
           { path: "/projects", element: <ProjectsListPage /> },
           { path: "/projects/:projectId", element: <ProjectDetailPage /> },

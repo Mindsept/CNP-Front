@@ -1,5 +1,7 @@
+import { mcpService } from "@/services/mcp.service";
+import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -83,6 +85,7 @@ function sanitizeK8sName(value: string): string {
 export function RepositoryCdPage() {
   const { repositoryId } = useParams<{ repositoryId: string }>();
   const id = repositoryId!;
+  const [searchParams, setSearchParams] = useSearchParams();
   const onError = useToastError();
   const qc = useQueryClient();
 
@@ -99,6 +102,14 @@ export function RepositoryCdPage() {
   const pipelinesQuery = useQuery({
     queryKey: ["repository", id, "cd"],
     queryFn: () => cdService.list(id),
+    refetchInterval: 10000,
+  });
+  const selectedPipelineId = searchParams.get("pipeline") ?? pipelinesQuery.data?.items[0]?.id;
+  const persistedPreview = useQuery({
+    queryKey: ["repository", id, "cd", selectedPipelineId],
+    queryFn: () => cdService.get(id, selectedPipelineId!),
+    enabled: Boolean(repoQuery.data && selectedPipelineId),
+    refetchInterval: 5000,
   });
 
   const registriesQuery = useQuery({
@@ -128,10 +139,21 @@ export function RepositoryCdPage() {
   const [mappings, setMappings] = useState<CdSecretMapping[]>([]);
   const [databaseSecretKey, setDatabaseSecretKey] = useState("");
 
-  const [preview, setPreview] = useState<CdPreview | null>(null);
+  const [localPreview, setPreview] = useState<CdPreview | null>(null);
+  const preview = persistedPreview.data ??
+    (localPreview?.cd_pipeline_id === selectedPipelineId ? localPreview : null);
+  const projectId = repoQuery.data?.project_id;
+  const reviewedPolicy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
+  const reviewed = Boolean(reviewedPolicy.data?.enabled);
   const [approved, setApproved] = useState(false);
   const [pr, setPr] = useState<CdCreatePrResponse | null>(null);
   const [prOpen, setPrOpen] = useState(false);
+
+  useEffect(() => {
+    setApproved(false);
+    setPr(null);
+    setPrOpen(false);
+  }, [id, selectedPipelineId]);
 
   // Initialize form once requirements arrive
   useEffect(() => {
@@ -186,8 +208,8 @@ export function RepositoryCdPage() {
         container_port: containerPort,
         replicas,
         service_type: serviceType,
-        kubeconfig_strategy: kubeconfigStrategy,
-        include_image_pull_secret: includeImagePullSecret,
+        kubeconfig_strategy: reviewed ? "azure_cli" : kubeconfigStrategy,
+        include_image_pull_secret: !reviewed && includeImagePullSecret,
         image_pull_secret_name: includeImagePullSecret
           ? imagePullSecretName.trim() || undefined
           : undefined,
@@ -198,6 +220,7 @@ export function RepositoryCdPage() {
       }),
     onSuccess: (data) => {
       setPreview(data);
+      setSearchParams({ pipeline: data.cd_pipeline_id }, { replace: true });
       setApproved(false);
       setPr(null);
       toast.success("CD preview generated");
@@ -266,7 +289,7 @@ export function RepositoryCdPage() {
   const deploymentQuery = useQuery({
     queryKey: deploymentQueryKey,
     queryFn: () => cdService.deployment(id, deployablePipelineId!),
-    enabled: Boolean(deployablePipelineId),
+    enabled: Boolean(deployablePipelineId) && !reviewed,
   });
 
   const refreshDeploymentMutation = useMutation({
@@ -295,7 +318,6 @@ export function RepositoryCdPage() {
   });
 
   const requirements = requirementsQuery.data;
-  const projectId = repoQuery.data?.project_id;
   const deployment = deploymentQuery.data;
 
   const hasCloudTargets = (requirements?.cloud_targets.length ?? 0) > 0;
@@ -308,6 +330,8 @@ export function RepositoryCdPage() {
   const providerLabel = selectedTarget
     ? selectedTarget.provider.toUpperCase()
     : "cloud";
+  const unsupportedReviewedTarget = reviewed && Boolean(selectedTarget) &&
+    (selectedTarget?.provider !== "azure" || selectedTarget?.cluster_type !== "aks");
 
   // Effective configured CD secrets (project + global registry/cloud node).
   const configuredCdKeys = useMemo(
@@ -342,11 +366,12 @@ export function RepositoryCdPage() {
 
   const missingProjectSecrets = preview?.missing_project_secrets ?? [];
   const canPreview = Boolean(
-    cloudTargetId && appName.trim() && image.trim() && imageTag.trim(),
+    cloudTargetId && appName.trim() && image.trim() && imageTag.trim() && !unsupportedReviewedTarget,
   );
 
   return (
     <div className="space-y-8">
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Rocket}
@@ -355,18 +380,40 @@ export function RepositoryCdPage() {
           label: repoQuery.data?.full_name ?? "repository",
         }}
         title="CD workflow"
-        description={`Generate Kubernetes manifests and a GitHub Actions deploy workflow for the selected ${providerLabel} ${clusterLabel} target. Deployment happens after the generated PR is merged to main.`}
+        description={reviewed ? "Generate and review AKS files. Merging the CD PR does not deploy: a separate reviewed deployment is required." : `Generate Kubernetes manifests and a GitHub Actions deploy workflow for the selected ${providerLabel} ${clusterLabel} target. Deployment happens after the generated PR is merged to main.`}
         actions={
           <Button
             onClick={() => previewMutation.mutate()}
             loading={previewMutation.isPending}
-            disabled={!canPreview || !hasCloudTargets}
+            disabled={!canPreview || !hasCloudTargets || pipelinesQuery.isPending || Boolean(selectedPipelineId) && persistedPreview.isPending || reviewedPolicy.isPending || reviewedPolicy.isError}
           >
             <Rocket className="h-4 w-4" />
             {preview ? "Regenerate preview" : "Generate CD preview"}
           </Button>
         }
       />
+
+      {unsupportedReviewedTarget && (
+        <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
+          Human-reviewed CD currently supports Azure AKS only. Select an Azure AKS target for this MCP-enabled project.
+          AWS EKS deployment remains available in projects without MCP review enabled.
+        </div>
+      )}
+
+      {pipelinesQuery.data && pipelinesQuery.data.items.length > 0 && (
+        <SectionCard title="Saved CD previews" description="Open files and reviews created in CNP or by MCP without regenerating them.">
+          <div className="flex flex-wrap gap-3">
+            {pipelinesQuery.data.items.map(p => <Button key={p.id} variant={p.id === selectedPipelineId ? "default" : "outline"} asChild>
+              <Link to={`/repositories/${id}/cd?pipeline=${p.id}`}>{p.app_name} · {p.status} · {new Date(p.created_at).toLocaleString()}</Link>
+            </Button>)}
+          </div>
+        </SectionCard>
+      )}
+      {(pipelinesQuery.isError || persistedPreview.isError) && <ErrorState
+        title="Could not load the saved CD preview"
+        error={pipelinesQuery.error ?? persistedPreview.error}
+        onRetry={() => { void pipelinesQuery.refetch(); void persistedPreview.refetch(); }}
+      />}
 
       {requirementsQuery.isLoading ? (
         <LoadingState rows={3} />
@@ -502,7 +549,8 @@ export function RepositoryCdPage() {
 
                 {selectedTarget?.provider !== "aws" ? <FieldBlock label="Kubeconfig strategy">
                   <Select
-                    value={kubeconfigStrategy}
+                    value={reviewed ? "azure_cli" : kubeconfigStrategy}
+                    disabled={reviewed || reviewedPolicy.isPending}
                     onValueChange={(v) =>
                       setKubeconfigStrategy(v as CdKubeconfigStrategy)
                     }
@@ -527,6 +575,8 @@ export function RepositoryCdPage() {
               </div>
 
               <div className="mt-4 space-y-3">
+                {reviewed && !unsupportedReviewedTarget && <p className="text-sm text-muted-foreground">Azure OIDC is preconfigured by CNP. No Azure client secret or kubeconfig export is required. Private image pull access must be preconfigured in the namespace.</p>}
+                {!reviewed && <>
                 <OptionRow
                   id="cd-pull-secret"
                   label="Include image pull secret"
@@ -543,6 +593,7 @@ export function RepositoryCdPage() {
                     />
                   </FieldBlock>
                 ) : null}
+                </>}
                 <OptionRow
                   id="cd-automap"
                   label="Auto-map project secrets"
@@ -595,6 +646,7 @@ export function RepositoryCdPage() {
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                   Required cluster secrets
                 </p>
+                {reviewed && <p className="text-sm text-muted-foreground">None to export. This target uses Azure OIDC.</p>}
                 <ul className="space-y-1.5 text-sm">
                   {requirements!.required_cloud_secret_names.map((k) => (
                     <li
@@ -766,8 +818,8 @@ export function RepositoryCdPage() {
 
           {databaseSecretKeys.length > 0 ? (
             <SectionCard
-              title="RDS database connection"
-              description="Inject a database connection secret into the application as DATABASE_URL. The password stays encrypted in CNP and GitHub Actions."
+              title="Database connection"
+              description="Inject a database connection secret into the application as DATABASE_URL using the configured CNP secret store and GitHub Actions."
             >
               <div className="flex flex-wrap items-end gap-3">
                 <FieldBlock label="Project database secret">
@@ -828,6 +880,7 @@ export function RepositoryCdPage() {
                     {!approved ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => approveMutation.mutate()}
                         loading={approveMutation.isPending}
                       >
@@ -837,6 +890,7 @@ export function RepositoryCdPage() {
                     ) : !pr ? (
                       <Button
                         size="sm"
+                        disabled={reviewed || reviewedPolicy.isPending}
                         onClick={() => setPrOpen(true)}
                         loading={createPrMutation.isPending}
                       >
@@ -893,7 +947,7 @@ export function RepositoryCdPage() {
                     <Row label="Namespace" value={preview.namespace} mono />
                     <Row
                       label="Image"
-                      value={`${preview.image}:${preview.image_tag}`}
+                      value={preview.image.includes("@sha256:") ? preview.image : `${preview.image}:${preview.image_tag}`}
                       mono
                     />
                   </dl>
@@ -994,8 +1048,7 @@ export function RepositoryCdPage() {
                   <Card className="flex items-start gap-3 border-info/30 bg-info/5 p-4 text-sm">
                     <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                     <p className="text-muted-foreground">
-                      Preview is read-only. Approve, then open a PR. Deployment
-                      to {clusterLabel} happens after the PR is merged to main.
+                      {reviewed ? "Use Human-reviewed operations to publish and merge these files, then request a separate deployment review." : `Preview is read-only. Approve, then open a PR. Deployment to ${clusterLabel} happens after the PR is merged to main.`}
                     </p>
                   </Card>
                 )}
@@ -1003,7 +1056,7 @@ export function RepositoryCdPage() {
             </div>
           )}
 
-          {deployablePipelineId ? (
+          {!reviewed && deployablePipelineId ? (
             <SectionCard
               title="Deployment"
               description={`Live status of this repository on the ${clusterLabel} cluster. Deployment happens after the CD PR is merged to main.`}
@@ -1152,9 +1205,9 @@ export function RepositoryCdPage() {
                       </p>
                       <p
                         className="break-all text-xs text-muted-foreground"
-                        title={`${p.image}:${p.image_tag}`}
+                        title={p.image.includes("@sha256:") ? p.image : `${p.image}:${p.image_tag}`}
                       >
-                        {p.image}:{p.image_tag} ·{" "}
+                        {p.image.includes("@sha256:") ? p.image : `${p.image}:${p.image_tag}`} ·{" "}
                         <span className="whitespace-nowrap">
                           {formatRelative(p.created_at)}
                         </span>
