@@ -14,9 +14,16 @@ describe("OIDC return navigation", () => {
   it.each([
     ["https://attacker.example", "/"],
     ["//attacker.example", "/"],
+    ["/\\attacker.example", "/"],
+    ["/\n/attacker.example", "/"],
     ["/auth/callback?code=leak", "/"],
     [undefined, "/"],
   ])("rejects unsafe return target %s", (value, expected) => {
     expect(safeReturnTo(value)).toBe(expected);
+  });
+
+  it("preserves an MCP consent request through the OIDC callback", () => {
+    const returnTo = "/mcp/consent?client_id=desktop&state=nonce&scope=projects%3Aread";
+    expect(getReturnToFromState({ returnTo })).toBe(returnTo);
   });
 });

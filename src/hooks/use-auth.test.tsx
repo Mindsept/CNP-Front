@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "oidc-client-ts";
 import { useAuth } from "./use-auth";
 import { authService } from "@/services/auth.service";
+import { mcpService } from "@/services/mcp.service";
 
 vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
+vi.mock("@/services/mcp.service", () => ({ mcpService: { logout: vi.fn() } }));
 
 function renderHook(callback: () => ReturnType<typeof useAuth>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -39,6 +41,7 @@ describe("useAuth OIDC adapter", () => {
     oidc.error = undefined;
     oidc.signinRedirect.mockReset().mockResolvedValue(undefined);
     oidc.signoutRedirect.mockReset().mockResolvedValue(undefined);
+    vi.mocked(mcpService.logout).mockReset().mockResolvedValue(undefined);
     vi.mocked(authService.me).mockReset().mockResolvedValue({ id: "cnp-id", email: "cnp@example.com", role: "user" });
   });
 
@@ -100,6 +103,19 @@ describe("useAuth OIDC adapter", () => {
   it("delegates logout to the OIDC end-session redirect", async () => {
     const { result } = renderHook(() => useAuth());
     await act(() => result.current.logout());
+    expect(mcpService.logout).toHaveBeenCalledOnce();
+    expect(oidc.signoutRedirect).toHaveBeenCalledOnce();
+    expect(vi.mocked(mcpService.logout).mock.invocationCallOrder[0]).toBeLessThan(
+      oidc.signoutRedirect.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("ends the Keycloak session even if MCP browser logout fails", async () => {
+    vi.mocked(mcpService.logout).mockRejectedValue(new Error("API unavailable"));
+    const { result } = renderHook(() => useAuth());
+    await act(async () => {
+      await result.current.logout();
+    });
     expect(oidc.signoutRedirect).toHaveBeenCalledOnce();
   });
 });

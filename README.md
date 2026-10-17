@@ -11,7 +11,7 @@ TanStack Query**.
 
 ## Requirements
 
-- Node.js 18+ (Node 20/22 recommended)
+- Node.js 22.18+ (required for the native TypeScript test runner)
 - npm 9+
 - the local Keycloak stack from `../IaC---CNP/dev/auth`
 - A running backend exposing the contracts under
@@ -48,7 +48,7 @@ The app starts on http://localhost:5173 and talks to the backend at
 npm run build     # type-check and build for production
 npm run preview   # preview the production build locally
 npm run lint      # run ESLint
-npm test          # run the Vitest suite
+npm test          # run the Vitest and Node MCP suites
 ```
 
 ---
@@ -225,3 +225,14 @@ Any static host works (Vercel, Netlify, Cloudflare Pages…). Set
 `npm run build`; the resulting `dist/` folder is what to serve. The deployed
 origin and callback/logout URLs must also be explicitly allowed on the Keycloak
 client. Production Keycloak must use HTTPS.
+
+## MCP and human reviews
+
+See [the documentation index](docs/README.md) for consent, connections, review
+fallback, project policy, deployment progress, contracts and qualification.
+The same Keycloak session authorizes the MCP browser session; signing out also
+revokes that browser session before redirecting to Keycloak. Consent and review
+URLs survive sign-in through the validated OIDC return destination.
+`npm test` exercises OIDC integration, review gating and redirect safety. The
+full GitHub/AKS and Codex acceptance recipe is documented separately from the
+local test results.

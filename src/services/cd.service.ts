@@ -11,6 +11,9 @@ import type {
 } from "@/types/cd";
 
 export const cdService = {
+  get(repositoryId: string, pipelineId: string): Promise<CdPreview> {
+    return api.get<CdPreview>(`/repositories/${repositoryId}/cd/${pipelineId}`);
+  },
   requirements(repositoryId: string): Promise<CdRequirements> {
     return api.get<CdRequirements>(
       `/repositories/${repositoryId}/cd/requirements`,

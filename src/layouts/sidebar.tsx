@@ -47,7 +47,7 @@ const baseNavGroups: NavGroup[] = [
   },
   {
     title: "System",
-    items: [{ to: "/audit", label: "Audit log", icon: ScrollText }],
+    items: [{ to: "/audit", label: "Audit log", icon: ScrollText }, { to: "/mcp/connections", label: "MCP connections", icon: Sparkles }, { to: "/mcp/reviews", label: "Human reviews", icon: ScrollText }],
   },
 ];
 

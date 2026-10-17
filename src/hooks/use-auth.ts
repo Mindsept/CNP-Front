@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth as useOidcAuth } from "react-oidc-context";
 import { oidcClaimsToIdentity } from "@/auth/claims";
 import { authService } from "@/services/auth.service";
+import { mcpService } from "@/services/mcp.service";
 import { safeReturnTo, type OidcNavigationState } from "@/auth/navigation";
 
 export function useAuth() {
@@ -37,6 +38,8 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     queryClient.clear();
+    // A failed API request must not prevent the identity-provider logout.
+    await mcpService.logout().catch(() => undefined);
     await signoutRedirect();
   }, [signoutRedirect, queryClient]);
 
