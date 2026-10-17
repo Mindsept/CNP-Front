@@ -19,7 +19,7 @@ function visit(node) {
       const component = element && ts.isJsxSelfClosingElement(element) ? element.tagName.getText(source) : '';
       const help = entries.get(route.text) || {};
       routes.push({ ...help, route_path: route.text, page_name: component,
-        auth_required: !['/login', '/register'].includes(route.text),
+        auth_required: !['/login', '/register', '/auth/callback', '/auth/logout/callback'].includes(route.text),
         domain: help.domain || 'Navigation', purpose: help.purpose || `Page ${component}` });
     }
   }

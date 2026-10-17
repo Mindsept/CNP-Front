@@ -23,6 +23,10 @@ import { PlatformInfrastructurePage } from "@/pages/admin/platform-infrastructur
 import { JobDetailPage } from "@/pages/jobs/job-detail";
 import { AuditLogPage } from "@/pages/audit/audit-log";
 import { NotFoundPage } from "@/pages/not-found";
+import {
+  OidcCallbackPage,
+  OidcLogoutCallbackPage,
+} from "@/pages/oidc-callback";
 
 import { McpConsentPage } from "@/pages/mcp/consent";
 import { McpConnectionsPage } from "@/pages/mcp/connections";
@@ -37,6 +41,8 @@ export const router = createBrowserRouter([
       { path: "/register", element: <RegisterPage /> },
     ],
   },
+  { path: "/auth/callback", element: <OidcCallbackPage /> },
+  { path: "/auth/logout/callback", element: <OidcLogoutCallbackPage /> },
   {
     element: <ProtectedRoute />,
     children: [

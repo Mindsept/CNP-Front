@@ -1,19 +1,31 @@
 import { api } from "@/lib/api";
-import { authStore } from "@/lib/auth";
+import { getValidAccessToken } from "@/auth/oidc-client";
 import { env } from "@/config/env";
 import type { Action, ActionType, Challenge, Connection, McpPolicy, RunProgress } from "@/types/mcp";
 
 let browserSession: { token: string; csrf: string } | null = null;
-let pending: Promise<string> | null = null;
+let pending: { token: string; promise: Promise<string> } | null = null;
 async function csrf(): Promise<string> {
-  const token = authStore.getAccessToken() ?? "";
+  const token = await getValidAccessToken();
+  if (!token) {
+    browserSession = null;
+    throw new Error("Sign in before performing this action");
+  }
   if (browserSession?.token === token) return browserSession.csrf;
-  if (pending) return pending;
-  pending = api.post<{ csrf_token: string }>("/auth/browser-session").then(result => {
+  if (pending?.token === token) return pending.promise;
+  if (pending) {
+    // Finish the previous identity's cookie write before creating a new one.
+    await pending.promise.catch(() => undefined);
+    return csrf();
+  }
+  const promise = api.post<{ csrf_token: string }>("/auth/browser-session", undefined, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(result => {
     browserSession = { token, csrf: result.csrf_token };
     return result.csrf_token;
   }).finally(() => { pending = null; });
-  return pending;
+  pending = { token, promise };
+  return promise;
 }
 async function browserPost<T>(url: string, body?: unknown): Promise<T> {
   return api.post<T>(url, body, { headers: { "X-CNP-CSRF": await csrf() } });

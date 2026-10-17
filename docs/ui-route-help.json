@@ -90,57 +90,40 @@
       "allowed_roles": [
         "anonymous"
       ],
-      "purpose": "Authenticate a user and preserve the requested next route.",
+      "purpose": "Start Keycloak OIDC sign-in with PKCE and preserve the requested next route.",
       "main_user_actions": [
-        "Enter email and password",
-        "Submit login",
-        "Navigate to registration"
+        "Continue to sign in with Keycloak",
+        "Retry loading the CNP profile or sign out if access is refused"
       ],
       "related_api_endpoints": [
         {
-          "method": "POST",
-          "path": "/auth/login",
-          "use": "Exchange credentials for tokens"
-        },
-        {
           "method": "GET",
           "path": "/auth/me",
-          "use": "Fetch the signed-in user after token storage"
+          "use": "Fetch the linked CNP profile using the Keycloak access token"
         }
       ],
       "prerequisites": [
-        "User account exists",
-        "Backend auth API is reachable"
+        "Keycloak identity is linked to an active CNP account",
+        "Keycloak and the backend auth API are reachable"
       ],
-      "success_state": "Tokens and user profile are stored, then the user is navigated to next or /.",
+      "success_state": "Keycloak redirects through /auth/callback; the CNP profile loads and the requested local route is restored.",
       "common_failure_states": [
-        "Email or password missing",
-        "Invalid credentials",
-        "Auth API error",
+        "Keycloak sign-in or MFA failed",
+        "CNP identity is not linked or its account is inactive",
+        "OIDC discovery or auth API error",
         "Network timeout"
       ],
       "help_topics": [
-        "auth.login.submit",
-        "auth.register.link"
+        "auth.login.submit"
       ],
       "key_ui_components": [
         "AuthLayout",
-        "Button",
-        "Input",
-        "Label"
+        "Button"
       ],
       "important_forms_and_buttons": [
         {
-          "label": "Sign in form",
-          "help_id": "auth.login.form"
-        },
-        {
-          "label": "Sign in",
+          "label": "Continue to sign in",
           "help_id": "auth.login.submit"
-        },
-        {
-          "label": "Create one",
-          "help_id": "auth.register.link"
         }
       ],
       "navigation_entry": null
@@ -153,7 +136,7 @@
       "allowed_roles": [
         "anonymous"
       ],
-      "purpose": "Create a user account and attempt automatic login.",
+      "purpose": "Create a legacy CNP account; Keycloak provisioning and identity linking are separate administrator operations.",
       "main_user_actions": [
         "Enter full name, email, and password",
         "Submit registration",
@@ -164,23 +147,13 @@
           "method": "POST",
           "path": "/auth/register",
           "use": "Create account"
-        },
-        {
-          "method": "POST",
-          "path": "/auth/login",
-          "use": "Attempt automatic login after registration"
-        },
-        {
-          "method": "GET",
-          "path": "/auth/me",
-          "use": "Fetch user profile after automatic login"
         }
       ],
       "prerequisites": [
         "Valid email address",
         "Password has at least 8 characters"
       ],
-      "success_state": "Account is created. If automatic login succeeds, the user lands on /; otherwise the user is sent to /login.",
+      "success_state": "The legacy account is created and /login is displayed. No Keycloak account or browser session is created.",
       "common_failure_states": [
         "Invalid email format",
         "Short password",
@@ -1786,35 +1759,35 @@
   "help_map": [
     {
       "help_id": "auth.login.submit",
-      "label": "Submit login",
+      "label": "Continue to sign in",
       "route": "/login",
-      "description": "Submits email and password, stores returned tokens, fetches /auth/me, and navigates to next or /.",
-      "api_endpoint": "POST /auth/login",
+      "description": "Redirects to Keycloak using OIDC Authorization Code with PKCE, then loads /auth/me and restores the safe local destination.",
+      "api_endpoint": "GET /auth/me",
       "required_state": [
-        "Email and password fields are filled"
+        "Keycloak identity is provisioned and linked to a CNP account"
       ],
       "expected_result": "The user is authenticated and redirected to the requested page or dashboard.",
       "troubleshooting_hints": [
-        "Check email/password validation",
-        "Verify backend auth API is reachable",
-        "A 401 from protected APIs clears auth and redirects to /login"
+        "Complete credentials and MFA only on Keycloak",
+        "Verify Keycloak and the backend auth API are reachable",
+        "Ask an administrator to link the identity if the CNP profile is refused"
       ]
     },
     {
       "help_id": "auth.register.submit",
       "label": "Create account",
       "route": "/register",
-      "description": "Creates an account and attempts automatic login.",
+      "description": "Creates a legacy CNP account without automatic login or Keycloak provisioning.",
       "api_endpoint": "POST /auth/register",
       "required_state": [
         "Full name is filled",
         "Email is valid",
         "Password has at least 8 characters"
       ],
-      "expected_result": "Account is created; user lands on dashboard if automatic login succeeds.",
+      "expected_result": "Account is created and /login is displayed; Keycloak access requires separate provisioning.",
       "troubleshooting_hints": [
         "Duplicate email or invalid password will be rejected by backend",
-        "If auto-login fails, sign in manually from /login"
+        "Ask an administrator to provision and link Keycloak access before signing in"
       ]
     },
     {
