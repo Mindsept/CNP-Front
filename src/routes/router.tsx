@@ -33,6 +33,9 @@ import { McpConnectionsPage } from "@/pages/mcp/connections";
 import { McpReviewsPage, McpReviewPage } from "@/pages/mcp/reviews";
 import { McpRunPage } from "@/pages/mcp/run";
 
+import { AwsEnvironmentPage } from "@/pages/projects/aws-environment";
+import { AzureEnvironmentPage } from "@/pages/projects/azure-environment";
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -50,6 +53,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: "/", element: <DashboardPage /> },
+          { path: "/databases", element: <Navigate to="/admin/infrastructure" replace /> },
           { path: "/mcp/consent", element: <McpConsentPage /> },
           { path: "/mcp/connections", element: <McpConnectionsPage /> },
           { path: "/mcp/reviews", element: <McpReviewsPage /> },
@@ -58,6 +62,8 @@ export const router = createBrowserRouter([
 
           { path: "/projects", element: <ProjectsListPage /> },
           { path: "/projects/:projectId", element: <ProjectDetailPage /> },
+          { path: "/projects/:projectId/aws-environment", element: <AwsEnvironmentPage /> },
+          { path: "/projects/:projectId/azure-environment", element: <AzureEnvironmentPage /> },
           {
             path: "/projects/:projectId/settings",
             element: <ProjectSettingsPage />,

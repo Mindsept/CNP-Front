@@ -19,6 +19,7 @@ import type { CdCreatePrInput } from "@/types/cd";
 interface CdCreatePrDialogProps {
   open: boolean;
   defaultBranch: string;
+  provider?: "azure" | "aws" | "gcp";
   loading?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: CdCreatePrInput) => void;
@@ -28,13 +29,12 @@ const defaults = {
   branch_name: "cnp/onboarding-cd",
   commit_message: "chore(cnp): add generated CD workflow",
   pull_request_title: "chore(cnp): add Kubernetes CD workflow",
-  pull_request_body:
-    "This PR adds generated CD from CNP. It will deploy the application to AKS once merged to main.",
 };
 
 export function CdCreatePrDialog({
   open,
   defaultBranch,
+  provider,
   loading,
   onOpenChange,
   onSubmit,
@@ -43,7 +43,8 @@ export function CdCreatePrDialog({
   const [branchName, setBranchName] = useState(defaults.branch_name);
   const [commitMessage, setCommitMessage] = useState(defaults.commit_message);
   const [prTitle, setPrTitle] = useState(defaults.pull_request_title);
-  const [prBody, setPrBody] = useState(defaults.pull_request_body);
+  const platform = provider === "aws" ? "EKS" : provider === "gcp" ? "GKE" : "AKS";
+  const [prBody, setPrBody] = useState("");
   const [syncSecrets, setSyncSecrets] = useState(true);
 
   useEffect(() => {
@@ -52,10 +53,10 @@ export function CdCreatePrDialog({
       setBranchName(defaults.branch_name);
       setCommitMessage(defaults.commit_message);
       setPrTitle(defaults.pull_request_title);
-      setPrBody(defaults.pull_request_body);
+      setPrBody(`This PR adds generated CD from CNP. It will deploy the application to ${platform} once merged to main.`);
       setSyncSecrets(true);
     }
-  }, [open, defaultBranch]);
+  }, [open, defaultBranch, platform]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

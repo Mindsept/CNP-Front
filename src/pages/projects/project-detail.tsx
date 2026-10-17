@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   GitBranch,
+  Database,
   KeyRound,
   Settings2,
   Users,
@@ -27,6 +28,8 @@ import {
 import { ProjectDeploymentsSection } from "@/components/cd/project-deployments-section";
 import { projectService } from "@/services/project.service";
 import { repositoryService } from "@/services/repository.service";
+import { useAuth } from "@/hooks/use-auth";
+import { cloudTargetService } from "@/services/cloud-target.service";
 
 function initials(name: string): string {
   return name
@@ -41,6 +44,7 @@ function initials(name: string): string {
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const id = projectId!;
+  const { user } = useAuth();
 
   const projectQuery = useQuery({
     queryKey: ["project", id],
@@ -51,6 +55,11 @@ export function ProjectDetailPage() {
     queryKey: ["project", id, "repositories"],
     queryFn: () => repositoryService.list(id),
     enabled: Boolean(id),
+  });
+
+  const targetsQuery = useQuery({
+    queryKey: ["project", id, "cloud-targets"],
+    queryFn: () => cloudTargetService.list(id),
   });
 
   if (projectQuery.isLoading) return <LoadingState rows={3} />;
@@ -68,6 +77,11 @@ export function ProjectDetailPage() {
   const ownerRole = project.members?.find(
     (m) => m.user_id === project.owner_id,
   )?.role;
+  const currentProjectRole = project.members?.find((m) => m.user_id === user?.id)?.role;
+  const canProvision = user?.role === "admin" || currentProjectRole === "owner" || currentProjectRole === "maintainer";
+  const cloudTargets = targetsQuery.data?.items ?? [];
+  const hasEks = cloudTargets.some((target) => target.provider === "aws" && target.cluster_type === "eks");
+  const hasAks = cloudTargets.some((target) => target.provider === "azure" && target.cluster_type === "aks");
 
   return (
     <div className="space-y-8">
@@ -168,7 +182,7 @@ export function ProjectDetailPage() {
           )}
         </SectionCard>
 
-        <div className="space-y-4">
+      <div className="space-y-4">
           <SectionCard
             title="Members"
             description={`${project.members?.length ?? 0} member${(project.members?.length ?? 0) === 1 ? "" : "s"}`}
@@ -224,6 +238,27 @@ export function ProjectDetailPage() {
           </Card>
         </div>
       </div>
+
+      {canProvision && hasEks ? <Card className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary"><Database className="h-5 w-5" /></div>
+          <div>
+            <p className="font-medium text-foreground">Infrastructure et base de données</p>
+            <p className="mt-1 text-sm text-muted-foreground">Votre infrastructure AWS et son contrat EKS sont déjà configurés. Vous pouvez ajouter une base Amazon RDS PostgreSQL à cette cible.</p>
+          </div>
+        </div>
+        <Button asChild><Link to={`/projects/${id}/aws-environment`}>Gérer la base PostgreSQL</Link></Button>
+      </Card> : null}
+      {canProvision && hasAks ? <Card className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary"><Database className="h-5 w-5" /></div>
+          <div>
+            <p className="font-medium text-foreground">Bases PostgreSQL pour Azure AKS</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ajoutez et gérez plusieurs bases pour ce projet.</p>
+          </div>
+        </div>
+        <Button asChild><Link to={`/projects/${id}/azure-environment`}>Gérer les bases PostgreSQL</Link></Button>
+      </Card> : null}
 
       <ProjectDeploymentsSection projectId={id} />
     </div>

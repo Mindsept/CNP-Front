@@ -20,7 +20,7 @@ function readEnv(): AppEnv {
     import.meta.env.VITE_KEYCLOAK_CLIENT_ID?.trim() || "cnp-front";
 
   return {
-    apiBaseUrl: apiBaseUrl.replace(/\/$/, ""),
+    apiBaseUrl: new URL(apiBaseUrl, window.location.origin).href.replace(/\/$/, ""),
     appName,
     keycloakUrl: keycloakUrl.replace(/\/$/, ""),
     keycloakRealm,

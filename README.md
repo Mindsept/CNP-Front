@@ -65,6 +65,8 @@ npm test          # run the Vitest and Node MCP suites
 
 The Axios client reads `VITE_API_BASE_URL` once at startup. Configure a
 different value per environment (e.g. on Vercel) — no URL is hardcoded.
+In development, `/api/v1` is also supported through Vite's API and OAuth proxy
+to `http://localhost:8080`; the frontend keeps port 5173 for the Keycloak callbacks.
 
 ---
 
@@ -236,3 +238,17 @@ URLs survive sign-in through the validated OIDC return destination.
 `npm test` exercises OIDC integration, review gating and redirect safety. The
 full GitHub/AKS and Codex acceptance recipe is documented separately from the
 local test results.
+
+The [Keycloak browser qualification](docs/auth-e2e.md) also checks real MFA,
+session restoration, logout, CNP access denial and MCP consent navigation against
+a disposable running stack with `npm run test:e2e:auth`.
+
+## Cloud databases and deployment
+
+Project pages expose AWS EKS/RDS and Azure AKS/PostgreSQL environments.
+Database connection keys can be mapped to `DATABASE_URL` in the CD preview;
+the frontend sends secret names only, while the API resolves their values from
+the configured secret store. Normal CD supports AWS EKS and Azure AKS.
+MCP human-reviewed CD currently supports Azure AKS only; the UI blocks AWS
+targets when the project's MCP policy is enabled instead of generating Azure
+authentication settings for an AWS deployment.

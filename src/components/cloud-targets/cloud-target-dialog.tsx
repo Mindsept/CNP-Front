@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type {
+  CloudProvider,
   CreateCloudTargetInput,
   DeploymentDefaults,
   KubeconfigStrategy,
@@ -48,6 +50,12 @@ const initialForm = {
   tenant_id: "",
   subscription_id: "",
   resource_group: "rg-cnp-demo",
+  account_id: "",
+  cluster_arn: "",
+  cd_role_arn: "",
+  status_role_arn: "",
+  dbaas_role_arn: "",
+  runner_labels: "self-hosted,linux,x64,cnp-aws-demo",
 };
 
 const defaultKubeStrategy: KubeconfigStrategy = {
@@ -92,9 +100,11 @@ export function CloudTargetDialog({
   onSubmit,
 }: CloudTargetDialogProps) {
   const [form, setForm] = useState(initialForm);
+  const [provider, setProvider] = useState<CloudProvider>("azure");
   const [kube, setKube] = useState<KubeconfigStrategy>(defaultKubeStrategy);
   const [deploy, setDeploy] = useState<DeploymentDefaults>(defaultDeployment);
   const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [contractConfigExtras, setContractConfigExtras] = useState<Record<string, unknown>>({});
   const [pasteJson, setPasteJson] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
   const [pasteOk, setPasteOk] = useState(false);
@@ -102,9 +112,11 @@ export function CloudTargetDialog({
   useEffect(() => {
     if (open) {
       setForm(initialForm);
+      setProvider("azure");
       setKube(defaultKubeStrategy);
       setDeploy(defaultDeployment);
       setSecrets({});
+      setContractConfigExtras({});
       setPasteJson("");
       setPasteError(null);
       setPasteOk(false);
@@ -119,6 +131,12 @@ export function CloudTargetDialog({
       const parsed = JSON.parse(pasteJson);
       const root = parsed.cnp_cd_contract ?? parsed;
       const ct = root.cloud_target ?? {};
+      if (!((ct.provider === "aws" && ct.cluster_type === "eks") || (ct.provider === "azure" && ct.cluster_type === "aks"))) {
+        throw new Error("Ce formulaire accepte les contrats Azure AKS et AWS EKS.");
+      }
+      const nextProvider: CloudProvider = ct.provider === "aws" && ct.cluster_type === "eks" ? "aws" : "azure";
+      setProvider(nextProvider);
+      setContractConfigExtras(nextProvider === "aws" && ct.config && typeof ct.config === "object" ? ct.config : {});
       setForm((current) => ({
         ...current,
         name: ct.name ?? current.name,
@@ -130,13 +148,19 @@ export function CloudTargetDialog({
         subscription_id:
           ct.config?.subscription_id ?? current.subscription_id,
         resource_group: ct.config?.resource_group ?? current.resource_group,
+        account_id: ct.config?.account_id ?? current.account_id,
+        cluster_arn: ct.config?.cluster_arn ?? current.cluster_arn,
+        cd_role_arn: ct.config?.cd_role_arn ?? current.cd_role_arn,
+        status_role_arn: ct.config?.status_role_arn ?? current.status_role_arn,
+        dbaas_role_arn: ct.config?.dbaas_role_arn ?? current.dbaas_role_arn,
+        runner_labels: Array.isArray(ct.config?.runner_labels) ? ct.config.runner_labels.join(",") : current.runner_labels,
       }));
       if (root.kubeconfig_strategy) {
         setKube({
           option_a_secret_name:
             root.kubeconfig_strategy.option_a_secret_name ??
             defaultKubeStrategy.option_a_secret_name,
-          option_b_secret_names: {
+          option_b_secret_names: nextProvider === "aws" ? (root.kubeconfig_strategy.option_b_secret_names ?? {}) : {
             ...defaultKubeStrategy.option_b_secret_names,
             ...(root.kubeconfig_strategy.option_b_secret_names ?? {}),
           },
@@ -157,29 +181,49 @@ export function CloudTargetDialog({
     }
   }
 
+  function selectProvider(value: string) {
+    const nextProvider = value as CloudProvider;
+    setProvider(nextProvider);
+    setContractConfigExtras({});
+    setKube(nextProvider === "aws" ? {
+      option_a_secret_name: "KUBECONFIG_CONTENT",
+      option_b_secret_names: {},
+      get_credentials_command: `aws eks update-kubeconfig --region ${form.region} --name ${form.cluster_name}`,
+    } : defaultKubeStrategy);
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const cleanedSecrets = Object.fromEntries(
       Object.entries(secrets).filter(([, v]) => v.trim().length > 0),
     );
+    const cloudConfig = provider === "aws" ? {
+      ...contractConfigExtras,
+      account_id: form.account_id.trim(),
+      cluster_arn: form.cluster_arn.trim() || undefined,
+      cd_role_arn: form.cd_role_arn.trim(),
+      status_role_arn: form.status_role_arn.trim(),
+      ...(form.dbaas_role_arn.trim() ? { dbaas_role_arn: form.dbaas_role_arn.trim() } : {}),
+      runner_labels: form.runner_labels.split(",").map((label) => label.trim()).filter(Boolean),
+    } : {
+      tenant_id: form.tenant_id.trim() || undefined,
+      subscription_id: form.subscription_id.trim() || undefined,
+      resource_group: form.resource_group.trim() || undefined,
+    };
     const payload: CreateCloudTargetInput = {
       cloud_target: {
         name: form.name.trim(),
         environment: form.environment.trim(),
-        provider: "azure",
-        cluster_type: "aks",
+        provider,
+        cluster_type: provider === "aws" ? "eks" : "aks",
         region: form.region.trim(),
         cluster_name: form.cluster_name.trim(),
         namespace: form.namespace.trim(),
-        config: {
-          tenant_id: form.tenant_id.trim() || undefined,
-          subscription_id: form.subscription_id.trim() || undefined,
-          resource_group: form.resource_group.trim() || undefined,
-        },
+        config: cloudConfig,
       },
       kubeconfig_strategy: kube,
       deployment_defaults: deploy,
-      secret_values: cleanedSecrets,
+      secret_values: provider === "aws" ? {} : cleanedSecrets,
     };
 
     if (import.meta.env.DEV) {
@@ -200,13 +244,12 @@ export function CloudTargetDialog({
           <DialogTitle>
             <span className="inline-flex items-center gap-2">
               <Cloud className="h-4 w-4 text-primary" />
-              Register Azure AKS cloud node
+              Register {provider === "aws" ? "Amazon EKS" : "Azure AKS"} cloud node
             </span>
           </DialogTitle>
           <DialogDescription>
-            Paste the <span className="font-mono">cnp_cd_contract</span> JSON
-            from Terraform/OpenTofu or fill the fields manually. Secret values
-            are stored encrypted and never displayed back.
+            Import the <span className="font-mono">cnp_cd_contract</span> JSON
+            produced by Terraform/OpenTofu. This registers an already existing cluster for CD; it does not create cloud infrastructure.
           </DialogDescription>
         </DialogHeader>
 
@@ -214,7 +257,7 @@ export function CloudTargetDialog({
           <section className="space-y-2 rounded-md border border-dashed border-border bg-surface/40 p-4">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               <FileJson className="h-3.5 w-3.5" />
-              Auto-fill from cnp_cd_contract
+              Fill from cnp_cd_contract
             </div>
             <Textarea
               value={pasteJson}
@@ -236,7 +279,7 @@ export function CloudTargetDialog({
                 <span className="text-xs text-destructive">{pasteError}</span>
               ) : pasteOk ? (
                 <span className="text-xs text-success">
-                  Form filled. Add the Azure credentials below before saving.
+                  Contract parsed. Review the fields below before saving.
                 </span>
               ) : null}
             </div>
@@ -245,6 +288,13 @@ export function CloudTargetDialog({
           <section className="space-y-3">
             <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Cluster
+            </div>
+            <div className="max-w-sm space-y-1.5">
+              <Label htmlFor="ct-provider" className="text-xs">Provider</Label>
+              <Select value={provider} onValueChange={selectProvider}>
+                <SelectTrigger id="ct-provider"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="azure">Azure AKS</SelectItem><SelectItem value="aws">Amazon EKS</SelectItem></SelectContent>
+              </Select>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
@@ -259,8 +309,7 @@ export function CloudTargetDialog({
                 value={form.environment}
                 onChange={(v) => setForm({ ...form, environment: v })}
               />
-              <ReadOnly label="Provider" value="azure" />
-              <ReadOnly label="Cluster type" value="aks" />
+              <ReadOnly label="Cluster type" value={provider === "aws" ? "eks" : "aks"} />
               <Field
                 id="ct-region"
                 label="Region"
@@ -279,24 +328,18 @@ export function CloudTargetDialog({
                 value={form.namespace}
                 onChange={(v) => setForm({ ...form, namespace: v })}
               />
-              <Field
-                id="ct-rg"
-                label="Resource group"
-                value={form.resource_group}
-                onChange={(v) => setForm({ ...form, resource_group: v })}
-              />
-              <Field
-                id="ct-tenant"
-                label="Azure tenant ID"
-                value={form.tenant_id}
-                onChange={(v) => setForm({ ...form, tenant_id: v })}
-              />
-              <Field
-                id="ct-sub"
-                label="Azure subscription ID"
-                value={form.subscription_id}
-                onChange={(v) => setForm({ ...form, subscription_id: v })}
-              />
+              {provider === "azure" ? <>
+                <Field id="ct-rg" label="Resource group" value={form.resource_group} onChange={(v) => setForm({ ...form, resource_group: v })} />
+                <Field id="ct-tenant" label="Azure tenant ID" value={form.tenant_id} onChange={(v) => setForm({ ...form, tenant_id: v })} />
+                <Field id="ct-sub" label="Azure subscription ID" value={form.subscription_id} onChange={(v) => setForm({ ...form, subscription_id: v })} />
+              </> : <>
+                <Field id="ct-account" label="AWS account ID" value={form.account_id} onChange={(v) => setForm({ ...form, account_id: v })} />
+                <Field id="ct-cluster-arn" label="EKS cluster ARN" value={form.cluster_arn} onChange={(v) => setForm({ ...form, cluster_arn: v })} />
+                <Field id="ct-cd-role" label="CD role ARN" value={form.cd_role_arn} onChange={(v) => setForm({ ...form, cd_role_arn: v })} />
+                <Field id="ct-status-role" label="Status role ARN" value={form.status_role_arn} onChange={(v) => setForm({ ...form, status_role_arn: v })} />
+                <Field id="ct-dbaas-role" label="DBaaS role ARN (optionnel)" value={form.dbaas_role_arn} onChange={(v) => setForm({ ...form, dbaas_role_arn: v })} />
+                <Field id="ct-runner-labels" label="Runner labels (comma separated)" value={form.runner_labels} onChange={(v) => setForm({ ...form, runner_labels: v })} />
+              </>}
             </div>
           </section>
 
@@ -315,7 +358,7 @@ export function CloudTargetDialog({
               />
               <Field
                 id="kube-cmd"
-                label="Option B · az get-credentials command"
+                label={`Option B · ${provider === "aws" ? "aws eks" : "az"} get-credentials command`}
                 value={kube.get_credentials_command ?? ""}
                 onChange={(v) =>
                   setKube({ ...kube, get_credentials_command: v })
@@ -357,7 +400,7 @@ export function CloudTargetDialog({
             </div>
           </section>
 
-          <section className="space-y-3">
+          {provider === "azure" ? <section className="space-y-3">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               <Lock className="h-3.5 w-3.5" />
               Azure secret values · encrypted, never displayed back
@@ -381,7 +424,7 @@ export function CloudTargetDialog({
                 </div>
               ))}
             </div>
-          </section>
+          </section> : <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">Le contrat EKS utilise des rôles IAM OIDC. Aucun secret AWS n’est demandé ou stocké dans Cloud Nodes.</p>}
 
           <DialogFooter>
             <Button
