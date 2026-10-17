@@ -239,6 +239,10 @@ URLs survive sign-in through the validated OIDC return destination.
 full GitHub/AKS and Codex acceptance recipe is documented separately from the
 local test results.
 
+The [Keycloak browser qualification](docs/auth-e2e.md) also checks real MFA,
+session restoration, logout, CNP access denial and MCP consent navigation against
+a disposable running stack with `npm run test:e2e:auth`.
+
 ## Cloud databases and deployment
 
 Project pages expose AWS EKS/RDS and Azure AKS/PostgreSQL environments.

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run && node --test tests/*.test.mjs",
+    "test:e2e:auth": "node scripts/e2e/auth.mjs",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
@@ -58,6 +59,7 @@
     "eslint-plugin-react-refresh": "^0.4.12",
     "globals": "^15.10.0",
     "jsdom": "25.0.1",
+    "playwright": "1.62.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
