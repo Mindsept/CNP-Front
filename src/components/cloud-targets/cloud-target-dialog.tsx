@@ -338,7 +338,16 @@ export function CloudTargetDialog({
                 <Field id="ct-cd-role" label="CD role ARN" value={form.cd_role_arn} onChange={(v) => setForm({ ...form, cd_role_arn: v })} />
                 <Field id="ct-status-role" label="Status role ARN" value={form.status_role_arn} onChange={(v) => setForm({ ...form, status_role_arn: v })} />
                 <Field id="ct-dbaas-role" label="DBaaS role ARN (optionnel)" value={form.dbaas_role_arn} onChange={(v) => setForm({ ...form, dbaas_role_arn: v })} />
-                <Field id="ct-runner-labels" label="Runner labels (comma separated)" value={form.runner_labels} onChange={(v) => setForm({ ...form, runner_labels: v })} />
+                {contractConfigExtras.runner_mode === "github-hosted-ssm" ? (
+                  <div className="space-y-1">
+                    <ReadOnly label="Deployment execution" value="GitHub Actions (automatic)" />
+                    <p className="text-xs text-muted-foreground">
+                      Cluster access is configured by the imported contract. No runner registration is required.
+                    </p>
+                  </div>
+                ) : (
+                  <Field id="ct-runner-labels" label="Runner labels (comma separated)" value={form.runner_labels} onChange={(v) => setForm({ ...form, runner_labels: v })} />
+                )}
               </>}
             </div>
           </section>
