@@ -1,3 +1,4 @@
+import { RepositoryObservabilityPanel } from "@/components/observability/repository-observability-panel";
 import { mcpService } from "@/services/mcp.service";
 import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { useEffect, useMemo, useState } from "react";
@@ -392,6 +393,8 @@ export function RepositoryCdPage() {
           </Button>
         }
       />
+
+      <RepositoryObservabilityPanel key={`${id}:${preview?.cd_pipeline_id ?? "none"}`} projectId={projectId} repositoryId={id} pipeline={preview} />
 
       {unsupportedReviewedTarget && (
         <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
