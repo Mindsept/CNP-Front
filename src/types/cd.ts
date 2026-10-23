@@ -8,7 +8,7 @@ export type CdPipelineStatus =
   | "error";
 
 export type CdServiceType = "LoadBalancer" | "ClusterIP" | "NodePort";
-export type CdKubeconfigStrategy = "secret" | "azure_cli";
+export type CdKubeconfigStrategy = "secret" | "azure_cli" | "in_cluster";
 
 export interface CdEnvVarRequirement {
   name: string;
@@ -130,6 +130,8 @@ export type DeploymentStatus =
   | "failed";
 
 export interface CdDeploymentDetails {
+  waiting_for?: string | null;
+  error?: { code: string; message: string };
   service_type?: string;
   cluster_ip?: string;
   ports?: unknown[];
