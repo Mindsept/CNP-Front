@@ -1172,7 +1172,7 @@
         "user",
         "admin"
       ],
-      "purpose": "Read saved CD previews and prepare separately reviewed publication, merge and deployment on MCP-enabled projects.",
+      "purpose": "Read saved CD previews and prepare separately reviewed publication, merge and deployment on MCP-enabled projects. Private k3s uses the reviewed portal flow, a ClusterIP Service and HTTPS Ingress.",
       "main_user_actions": [
         "View CD requirements",
         "Select cloud target",
@@ -1324,13 +1324,16 @@
       "allowed_roles": [
         "admin"
       ],
-      "purpose": "Configure shared container registry and global cloud nodes for CI/CD.",
+      "purpose": "Configure shared registries/global cloud nodes and import project-scoped private k3s targets.",
       "main_user_actions": [
         "Configure or update GHCR registry",
         "Add Azure AKS cloud node",
         "Parse cnp_cd_contract JSON",
         "Review stored secret keys",
-        "Review validation errors"
+        "Review validation errors",
+        "Register private k3s contract for a project",
+        "Upload read-only observer credential",
+        "Check private namespace connection"
       ],
       "related_api_endpoints": [
         {
@@ -1352,12 +1355,28 @@
           "method": "POST",
           "path": "/admin/cloud-nodes",
           "use": "Create or update global cloud node"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/cloud-targets",
+          "use": "Import project private contract"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/secrets",
+          "use": "Store scoped observer credential"
+        },
+        {
+          "method": "POST",
+          "path": "/cloud-targets/{cloud_target_id}/check",
+          "use": "Verify read-only Kubernetes access"
         }
       ],
       "prerequisites": [
         "Signed-in user has role admin",
         "GHCR PAT for registry save",
-        "Azure credentials or kubeconfig strategy for cloud node save"
+        "Azure credentials or kubeconfig strategy for cloud node save",
+        "Existing operator-prepared k3s and matching project JSON contract for private targets"
       ],
       "success_state": "Registry or cloud node is saved, relevant queries refresh, and stored secret keys are shown for cloud nodes.",
       "common_failure_states": [
@@ -1370,7 +1389,8 @@
       "help_topics": [
         "admin.registry.save",
         "admin.cloudNodes.save",
-        "admin.cloudNodes.parseContract"
+        "admin.cloudNodes.parseContract",
+        "admin.privateTargets"
       ],
       "key_ui_components": [
         "PageHeader",
@@ -1379,7 +1399,8 @@
         "RegistryDialog",
         "CloudTargetDialog",
         "Badge",
-        "Card"
+        "Card",
+        "PrivateTargetsPanel"
       ],
       "important_forms_and_buttons": [
         {
@@ -2081,6 +2102,23 @@
         "A 409 means create and merge the CD PR before refreshing",
         "Pending often means waiting for a LoadBalancer IP",
         "Failed deployments show details in the panel"
+      ]
+    },
+    {
+      "help_id": "admin.privateTargets",
+      "route": "/admin/infrastructure",
+      "description": "Import the project non-secret k3s contract, upload the separate observer file and check Kubernetes access. The operator prepares VM/k3s outside CNP.",
+      "label": "Private cloud \u00b7 k3s",
+      "api_endpoint": "POST /projects/{project_id}/cloud-targets",
+      "required_state": [
+        "Platform admin browser session",
+        "Existing project-scoped operator-prepared k3s"
+      ],
+      "expected_result": "Private target and separate observer are registered; namespace read access is verified.",
+      "troubleshooting_hints": [
+        "Match the namespace to the selected project UUID",
+        "Renew expired observer access through the operator setup",
+        "Check API egress CIDRs and cluster CA"
       ]
     }
   ]

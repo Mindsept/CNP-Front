@@ -88,7 +88,7 @@ export function PrivateTargetsPanel() {
           <p className="break-all text-sm">{String(target.config.kubernetes_server)}</p>
           <div>
             <Label htmlFor={`observer-${target.id}`}>Read-only observer kubeconfig</Label>
-            <Input id={`observer-${target.id}`} type="file" accept=".yaml,.yml,.json" disabled={uploading !== null} onChange={event => {
+            <Input id={`observer-${target.id}`} type="file" accept=".kubeconfig,.yaml,.yml,.json" disabled={uploading !== null} onChange={event => {
               const file = event.target.files?.[0]; event.target.value = "";
               if (file) void uploadObserver(target, file);
             }} />
