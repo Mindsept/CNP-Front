@@ -72,9 +72,12 @@ export function RepositoryObservabilityPanel({ projectId, repositoryId, pipeline
     closeReview();
   }
   async function retry() {
-    if (!binding || !canManage)
+    if (!binding || binding.status !== "failed" || !canManage || !bindings.isSuccess)
       return;
-    await observabilityService.retry(binding.binding_id, key("retry:" + binding.binding_id + ":" + binding.config_revision));
+    const scope = "retry:" + binding.binding_id + ":" + binding.config_revision;
+    await observabilityService.retry(binding.binding_id, key(scope));
+    // Keep the key after an uncertain response, but allow a new attempt after success.
+    keys.current.delete(scope);
     await client.invalidateQueries({ queryKey: ["observability", "bindings", projectId] });
   }
   if (!projectId)
@@ -87,7 +90,8 @@ export function RepositoryObservabilityPanel({ projectId, repositoryId, pipeline
   {pipeline && <><label className="flex items-center gap-3 text-sm"><Switch checked={enabled} disabled={!canManage || busy} onCheckedChange={value => { setEnabled(value); closeReview(); }}/>Enable observability in this plan</label>{enabled && <div><label htmlFor="observability-image-digest" className="text-sm font-medium">Image digest (SHA-256)</label><Input id="observability-image-digest" className="mt-2 font-mono text-xs" placeholder="sha256:…" value={imageDigest} disabled={!canManage || busy} onChange={e => { setImageDigest(e.target.value); closeReview(); }}/><p className="mt-1 text-xs text-muted-foreground">Use the immutable digest of the approved application image. A tag alone is not sufficient.</p></div>}
   {enabled && availability.isPending && <p className="text-sm text-muted-foreground">Checking availability…</p>}{enabled && availability.isError && <p role="alert" className="text-sm text-destructive">Availability could not be checked. <Button variant="link" onClick={() => void availability.refetch()}>Retry availability</Button></p>}{enabled && availability.data && !availability.data.available && <p className="text-sm text-muted-foreground">{observabilityReason(availability.data.reason_code)}</p>}
   {binding?.reason_code && bindings.isSuccess && <p className="text-sm text-muted-foreground">{observabilityReason(binding.reason_code)}</p>}
-  <div className="flex flex-wrap gap-2"><Button variant="subtle" loading={busy} disabled={!ready} onClick={() => void action(prepare)}>Prepare configuration</Button>{binding && bindings.isSuccess && ["failed", "degraded"].includes(binding.status) && <Button variant="outline" disabled={!canManage || busy} onClick={() => void action(retry)}>Retry observability</Button>}</div></>}
+  {binding?.status === "degraded" && bindings.isSuccess && <p className="text-sm text-muted-foreground">Telemetry checks are degraded. CNP checks again automatically; if this persists, check the application and observability platform. <Button variant="link" disabled={busy || bindings.isFetching} onClick={() => void bindings.refetch()}>Refresh observability status</Button></p>}
+  <div className="flex flex-wrap gap-2"><Button variant="subtle" loading={busy} disabled={!ready} onClick={() => void action(prepare)}>Prepare configuration</Button>{binding?.status === "failed" && bindings.isSuccess && <Button variant="outline" disabled={!canManage || busy} onClick={() => void action(retry)}>Retry observability</Button>}</div></>}
   {!canManage && <p className="text-xs text-muted-foreground">Viewer access. A project Maintainer or Owner is required to change observability.</p>}
   {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
   {planId && (!uuid.test(planId) || review.isError || (review.isSuccess && !matches && bindings.isSuccess)) && <p role="alert" className="text-sm text-destructive">This review is unavailable or belongs to another CD selection. <Button variant="link" onClick={closeReview}>Dismiss review</Button></p>}

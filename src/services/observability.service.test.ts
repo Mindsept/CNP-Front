@@ -58,6 +58,15 @@ it("keeps approval tied to exact revision/fingerprint with its idempotency key",
   expect(api.post).toHaveBeenCalledWith("/observability/deployment-plans/plan/approve", { expected_revision: 4, artifact_digest: "f".repeat(64) }, { headers: { "Idempotency-Key": "same-key" } });
 });
 
+it("retries with an empty HTTP body and preserves the caller's idempotency key", async () => {
+  const retried = { binding_id: "binding", status: "preparing", config_revision: 4, job_id: "retry-job" };
+  vi.mocked(api.post).mockResolvedValue(retried);
+  await expect(observabilityService.retry("binding", "retry-key")).resolves.toEqual(retried);
+  expect(api.post).toHaveBeenCalledWith("/observability/bindings/binding/retry", undefined, {
+    headers: { "Idempotency-Key": "retry-key" },
+  });
+});
+
 
 it("includes automatic renewal only in a new activation plan", async () => {
   await observabilityService.prepare("repo", "binding", "pipeline", true, "sha256:" + "a".repeat(64));

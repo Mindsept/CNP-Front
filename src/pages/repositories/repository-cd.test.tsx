@@ -7,6 +7,9 @@ import { cdService } from "@/services/cd.service";
 import { mcpService } from "@/services/mcp.service";
 import { repositoryService } from "@/services/repository.service";
 import { containerRegistryService } from "@/services/container-registry.service";
+import { observabilityService } from "@/services/observability.service";
+import { authService } from "@/services/auth.service";
+import { projectService } from "@/services/project.service";
 import type { CdRequirements } from "@/types/cd";
 
 vi.mock("@/services/repository.service", () => ({
@@ -17,6 +20,9 @@ vi.mock("@/services/container-registry.service", () => ({
 }));
 vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
 vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn() } }));
+vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
+vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
+vi.mock("@/services/project.service", () => ({ projectService: { get: vi.fn() } }));
 
 function requirements(provider: "aws" | "azure"): CdRequirements {
   return {
@@ -57,6 +63,12 @@ describe("CD integration across MCP and database provisioning", () => {
     // Keep the preview request pending to inspect the submitted payload without a live backend.
     vi.mocked(cdService.preview).mockReset().mockImplementation(() => new Promise(() => {}));
     vi.mocked(mcpService.policy).mockReset().mockResolvedValue({ enabled: false, target_ids: [], version: 1 });
+    vi.mocked(observabilityService.list).mockReset().mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+    vi.mocked(authService.me).mockReset().mockResolvedValue({ id: "user", role: "user" });
+    vi.mocked(projectService.get).mockReset().mockResolvedValue({
+      id: "project", name: "Project", slug: "project", description: null, owner_id: "user",
+      members: [{ user_id: "user", email: "user@example.test", role: "owner" }],
+    });
   });
 
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {

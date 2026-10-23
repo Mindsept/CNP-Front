@@ -18,7 +18,7 @@ export const observabilityService = {
     return api.post(`/observability/deployment-plans/${plan.plan_id}/approve`, { expected_revision: plan.binding_revision, artifact_digest: plan.artifact_digest }, { headers: { "Idempotency-Key": key } });
   },
   retry(bindingId: string, key: string): Promise<ObservabilityBinding> {
-    return api.post(`/observability/bindings/${bindingId}/retry`, {}, { headers: { "Idempotency-Key": key } });
+    return api.post(`/observability/bindings/${bindingId}/retry`, undefined, { headers: { "Idempotency-Key": key } });
   },
   launch(projectId: string): Promise<GrafanaLaunch> { return api.post(`/projects/${projectId}/observability/access`, {}); },
 };
