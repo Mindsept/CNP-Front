@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cloudTargetService } from "@/services/cloud-target.service";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -29,11 +33,22 @@ export function ProjectDeploymentsSection({
   });
 
   const items = deploymentsQuery.data?.items ?? [];
+  const [attach, setAttach] = useState(false);
+  const [repositoryId, setRepositoryId] = useState("");
+  const [targetId, setTargetId] = useState("");
+  const [appName, setAppName] = useState("");
+  const qc = useQueryClient();
+  const targets = useQuery({ queryKey: ["project", projectId, "cloud-targets"], queryFn: () => cloudTargetService.list(projectId), enabled: attach });
+  const repositories = [...new Map(items.map((item) => [item.repository_id, item])).values()];
+  const observe = useMutation({
+    mutationFn: () => cdService.observeExisting(repositoryId, { cloud_target_id: targetId, app_name: appName.trim() }),
+    onSuccess: () => { setAttach(false); toast.success("Application vérifiée dans Kubernetes et rattachée au projet"); qc.invalidateQueries({ queryKey: ["project", projectId, "deployments"] }); },
+  });
 
   return (
     <SectionCard
       title="Deployments"
-      description="Deployment status for every repository in this project."
+      description="État observé par application et cible cloud du projet."
       actions={
         <Button
           size="sm"
@@ -48,6 +63,23 @@ export function ProjectDeploymentsSection({
         </Button>
       }
     >
+      <Button size="sm" variant="outline" className="mb-4" onClick={() => setAttach(!attach)}>Rattacher une application existante</Button>
+      {attach ? <form className="mb-5 grid gap-3 rounded-lg border border-border p-4" onSubmit={(event) => { event.preventDefault(); observe.mutate(); }}>
+        <p className="text-sm text-muted-foreground">Lecture seule dans le namespace de la cible. CNP vérifie l’image et les réplicas ; aucune ressource cloud n’est créée.</p>
+        <Label htmlFor="observed-repo">Dépôt</Label>
+        <select id="observed-repo" className="h-10 rounded-md border border-border bg-surface px-3 text-sm" value={repositoryId} onChange={(e) => setRepositoryId(e.target.value)} required>
+          <option value="">Choisir un dépôt</option>{repositories.map((r) => <option key={r.repository_id} value={r.repository_id}>{r.repository_full_name}</option>)}
+        </select>
+        <Label htmlFor="observed-target">Cible cloud</Label>
+        <select id="observed-target" className="h-10 rounded-md border border-border bg-surface px-3 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)} required>
+          <option value="">Choisir une cible</option>{targets.data?.items.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.provider} · {t.region}</option>)}
+        </select>
+        {targets.isError ? <p role="alert" className="text-sm text-destructive">Impossible de charger les cibles cloud.</p> : null}
+        <Label htmlFor="observed-app">Nom du Deployment et du Service Kubernetes</Label>
+        <Input id="observed-app" value={appName} onChange={(e) => setAppName(e.target.value)} placeholder="mon-application" pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?" maxLength={63} required />
+        {observe.isError ? <p role="alert" className="text-sm text-destructive">{(observe.error as Error).message}</p> : null}
+        <Button type="submit" disabled={!repositoryId || !targetId || !appName.trim()} loading={observe.isPending}>Vérifier et rattacher</Button>
+      </form> : null}
       {deploymentsQuery.isLoading ? (
         <LoadingState rows={2} />
       ) : deploymentsQuery.isError ? (
@@ -64,7 +96,7 @@ export function ProjectDeploymentsSection({
         <ul className="divide-y divide-border/60">
           {items.map((item) => (
             <DeploymentRow
-              key={item.repository_id}
+              key={item.latest_cd_pipeline_id ?? item.repository_id}
               projectId={projectId}
               item={item}
             />
@@ -139,13 +171,14 @@ function DeploymentRow({
         </div>
 
         <p className="text-xs text-muted-foreground">{meta.hint}</p>
+        {item.pipeline_status === "observed" ? <p className="text-xs text-muted-foreground">Application existante rattachée au projet · état lu dans Kubernetes</p> : null}
 
-        {item.image && item.image_tag ? (
+        {item.image ? (
           <p
             className="break-all font-mono text-[11px] text-muted-foreground"
-            title={`${item.image}:${item.image_tag}`}
+            title={item.image_tag ? `${item.image}:${item.image_tag}` : item.image}
           >
-            {item.image}:{item.image_tag}
+            {item.image}{item.image_tag ? `:${item.image_tag}` : ""}
           </p>
         ) : null}
 

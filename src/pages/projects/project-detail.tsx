@@ -239,25 +239,15 @@ export function ProjectDetailPage() {
         </div>
       </div>
 
-      {canProvision && hasEks ? <Card className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+      {canProvision && (hasEks || hasAks) ? <Card className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
         <div className="flex items-start gap-3">
           <div className="rounded-lg bg-primary/10 p-2 text-primary"><Database className="h-5 w-5" /></div>
           <div>
-            <p className="font-medium text-foreground">Infrastructure et base de données</p>
-            <p className="mt-1 text-sm text-muted-foreground">Votre infrastructure AWS et son contrat EKS sont déjà configurés. Vous pouvez ajouter une base Amazon RDS PostgreSQL à cette cible.</p>
+            <p className="font-medium text-foreground">Bases PostgreSQL</p>
+            <p className="mt-1 text-sm text-muted-foreground">Choisissez AWS ou Azure, puis la cible du projet pour créer et gérer vos bases.</p>
           </div>
         </div>
-        <Button asChild><Link to={`/projects/${id}/aws-environment`}>Gérer la base PostgreSQL</Link></Button>
-      </Card> : null}
-      {canProvision && hasAks ? <Card className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 text-primary"><Database className="h-5 w-5" /></div>
-          <div>
-            <p className="font-medium text-foreground">Bases PostgreSQL pour Azure AKS</p>
-            <p className="mt-1 text-sm text-muted-foreground">Ajoutez et gérez plusieurs bases pour ce projet.</p>
-          </div>
-        </div>
-        <Button asChild><Link to={`/projects/${id}/azure-environment`}>Gérer les bases PostgreSQL</Link></Button>
+        <Button asChild><Link to={`/projects/${id}/databases`}>Gérer les bases PostgreSQL</Link></Button>
       </Card> : null}
 
       <ProjectDeploymentsSection projectId={id} />
