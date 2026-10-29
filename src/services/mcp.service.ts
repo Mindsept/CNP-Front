@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import { getValidAccessToken } from "@/auth/oidc-client";
 import { env } from "@/config/env";
 import type { Action, ActionType, Challenge, Connection, McpPolicy, RunProgress } from "@/types/mcp";
+import type { TrafficConfiguration, TrafficInput, TrafficStatus } from "@/types/traffic";
 
 let browserSession: { token: string; csrf: string } | null = null;
 let pending: { token: string; promise: Promise<string> } | null = null;
@@ -31,6 +32,12 @@ async function browserPost<T>(url: string, body?: unknown): Promise<T> {
   return api.post<T>(url, body, { headers: { "X-CNP-CSRF": await csrf() } });
 }
 export const mcpService = {
+  traffic: (repositoryId: string) => api.get<TrafficStatus>(`/repositories/${repositoryId}/traffic`),
+  async configureTraffic(repositoryId: string, input: TrafficInput) {
+    return api.put<TrafficConfiguration>(`/repositories/${repositoryId}/traffic`, input, { headers: { "X-CNP-CSRF": await csrf() } });
+  },
+  prepareTraffic: (repository_id: string, destination: string) => browserPost<Action>("/traffic/switches", { repository_id, destination, idempotency_key: crypto.randomUUID() }),
+  reconcileTraffic: (actionId: string) => browserPost<Action>(`/traffic/switches/${actionId}/reconcile`),
   connections: () => api.get<{ items: Connection[] }>("/oauth/connections"),
   async revoke(id: string) { return api.delete(`/oauth/connections/${id}`, { headers: { "X-CNP-CSRF": await csrf() } }); },
   async logout() {
