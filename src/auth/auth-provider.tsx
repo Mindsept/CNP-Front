@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PropsWithChildren } from "react";
+import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import {
   AuthProvider as OidcAuthProvider,
   useAuth as useOidcAuth,
@@ -7,7 +7,8 @@ import {
   handleSigninCallback,
   handleSignoutCallback,
 } from "@/auth/callbacks";
-import { oidcUserManager } from "@/auth/oidc-client";
+import { loadLocalDemoSession, oidcUserManager } from "@/auth/oidc-client";
+import { env } from "@/config/env";
 
 function SessionRenewalFailureHandler() {
   const auth = useOidcAuth();
@@ -43,6 +44,17 @@ function SessionRenewalFailureHandler() {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const [ready, setReady] = useState(!env.localDemo);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!env.localDemo) return;
+    let cancelled = false;
+    void loadLocalDemoSession().then(() => {
+      if (!cancelled) setReady(true);
+    }).catch((failure: Error) => { if (!cancelled) setError(failure.message); });
+    return () => { cancelled = true; };
+  }, []);
+  if (!ready) return <div className="p-8" role="status">{error ?? "Opening local administrator session…"}</div>;
   return (
     <OidcAuthProvider
       userManager={oidcUserManager}
@@ -53,7 +65,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       onSigninCallback={handleSigninCallback}
       onSignoutCallback={handleSignoutCallback}
     >
-      <SessionRenewalFailureHandler />
+      {env.localDemo ? <div role="status" className="bg-amber-950 px-4 py-2 text-center text-xs text-amber-200">Démo locale — session administrateur sans Keycloak. Authentification cloud inchangée.</div> : <SessionRenewalFailureHandler />}
       {children}
     </OidcAuthProvider>
   );

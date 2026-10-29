@@ -5,6 +5,8 @@ import { oidcClaimsToIdentity } from "@/auth/claims";
 import { authService } from "@/services/auth.service";
 import { mcpService } from "@/services/mcp.service";
 import { safeReturnTo, type OidcNavigationState } from "@/auth/navigation";
+import { env } from "@/config/env";
+import { loadLocalDemoSession, oidcUserManager } from "@/auth/oidc-client";
 
 export function useAuth() {
   const oidc = useOidcAuth();
@@ -25,6 +27,11 @@ export function useAuth() {
 
   const login = useCallback(
     async (returnTo = "/") => {
+      if (env.localDemo) {
+        await loadLocalDemoSession();
+        window.location.assign(safeReturnTo(returnTo));
+        return;
+      }
       const state: OidcNavigationState = {
         returnTo: safeReturnTo(returnTo),
       };
@@ -38,6 +45,11 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     queryClient.clear();
+    if (env.localDemo) {
+      await oidcUserManager.removeUser();
+      window.location.assign("/login");
+      return;
+    }
     // A failed API request must not prevent the identity-provider logout.
     await mcpService.logout().catch(() => undefined);
     await signoutRedirect();

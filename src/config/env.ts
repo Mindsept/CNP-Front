@@ -4,6 +4,7 @@ interface AppEnv {
   keycloakUrl: string;
   keycloakRealm: string;
   keycloakClientId: string;
+  localDemo: boolean;
 }
 
 function readEnv(): AppEnv {
@@ -25,6 +26,8 @@ function readEnv(): AppEnv {
     keycloakUrl: keycloakUrl.replace(/\/$/, ""),
     keycloakRealm,
     keycloakClientId,
+    localDemo: import.meta.env.DEV && import.meta.env.MODE === "development" && import.meta.env.VITE_LOCAL_DEMO === "true" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname),
   };
 }
 
