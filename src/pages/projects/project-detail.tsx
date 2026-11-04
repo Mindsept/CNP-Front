@@ -26,6 +26,7 @@ import {
   StackBadge,
 } from "@/components/common/status-badge";
 import { ProjectDeploymentsSection } from "@/components/cd/project-deployments-section";
+import { ProjectSlaSection } from "@/components/cd/project-sla-section";
 import { ProjectTrafficSection } from "@/components/cd/project-traffic-section";
 import { projectService } from "@/services/project.service";
 import { repositoryService } from "@/services/repository.service";
@@ -114,6 +115,8 @@ export function ProjectDetailPage() {
           </>
         }
       />
+
+      <ProjectSlaSection projectId={id} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <SectionCard
