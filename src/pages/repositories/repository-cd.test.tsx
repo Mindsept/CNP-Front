@@ -23,6 +23,9 @@ vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), li
 vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
 vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
 vi.mock("@/services/project.service", () => ({ projectService: { get: vi.fn() } }));
+// This page fixture represents the authenticated project owner used by /me below.
+// The observability card keys its durable receipt by this real account identity.
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user", role: "user" }, isLoading: false, error: null }) }));
 
 function requirements(provider: "aws" | "azure"): CdRequirements {
   return {

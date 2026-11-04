@@ -5,13 +5,15 @@ import { MemoryRouter } from "react-router-dom";
 import { ProjectObservabilityCard } from "./project-observability-card";
 import { observabilityService, openProjectGrafana } from "@/services/observability.service";
 import type { ObservabilityBinding } from "@/types/observability";
-vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() }, openProjectGrafana: vi.fn() }));
+vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn(), incidents: vi.fn().mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 }) }, openProjectGrafana: vi.fn() }));
+vi.mock("@/hooks/use-observability", async importOriginal => ({ ...await importOriginal<typeof import("@/hooks/use-observability")>(), useObservabilityPermissions: () => ({ canManage: false, isPending: false, isError: false }) }));
 const row = { binding_id: "b", repository_id: "repo", service_key: "commerce", environment: "dev", cloud_target_id: "t", status: "active" } as ObservabilityBinding;
 beforeEach(() => { vi.mocked(observabilityService.list).mockReset().mockResolvedValue({ items: [row], total: 1, offset: 0, limit: 20 }); vi.mocked(openProjectGrafana).mockReset().mockResolvedValue(); });
 function setup() { const q = new QueryClient({ defaultOptions: { queries: { retry: false } } }); return render(<QueryClientProvider client={q}><MemoryRouter><ProjectObservabilityCard projectId="a" targets={[{ id: "t", name: "AKS Dev" }]}/></MemoryRouter></QueryClientProvider>); }
 it("reads server state and opens external Grafana for this project", async () => {
   setup();
   await screen.findByText("commerce");
+  expect(screen.getByRole("link", { name: "commerce" })).toHaveAttribute("href", "/repositories/repo/cd?obsTarget=t&obsService=commerce");
   expect(screen.getByText("Active")).toBeInTheDocument();
   expect(screen.getByText(/AKS Dev/)).toBeInTheDocument();
   expect(observabilityService.list).toHaveBeenCalledWith("a", undefined, 0, undefined, undefined);

@@ -1,18 +1,61 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
-import { observabilityService, openProjectGrafana } from "./observability.service";
+import { observabilityService, openProjectGrafana, openBindingGrafana } from "./observability.service";
 import type { GrafanaLaunch, ObservabilityPlan } from "@/types/observability";
-vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn() } }));
+vi.mock("@/lib/api", () => ({ api: { get: vi.fn(), post: vi.fn(), raw: { request: vi.fn() } } }));
 const valid: GrafanaLaunch = { entry_url: "http://localhost:13000/session", ticket: "t".repeat(43), expires_in: 60, method: "POST" };
 let popup: Window;
 let doc: Document;
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset().mockResolvedValue(valid);
+  vi.mocked(api.raw.request).mockReset().mockResolvedValue({ data: valid, status: 200, headers: {} });
   doc = document.implementation.createHTMLDocument();
   popup = { document: doc, opener: window, closed: false, close: vi.fn() } as unknown as Window;
   vi.spyOn(window, "open").mockReturnValue(popup);
   vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => { });
+});
+
+it("binds direct Grafana access to the exact application and bounded destination", async () => {
+  await openBindingGrafana("binding", "traces");
+  expect(api.raw.request).toHaveBeenCalledWith(expect.objectContaining({ method: "POST", url: "/observability/bindings/binding/grafana-access", data: { destination: "traces" } }));
+  const form = doc.querySelector("form")!;
+  expect(form.method).toBe("post");
+  expect(form.action).not.toContain(valid.ticket);
+});
+
+it("selects the image server-side and never sends a digest or tag during preparation", async () => {
+  await observabilityService.prepareActivationPlan("repo", "target", "api", "enable");
+  expect(api.raw.request).toHaveBeenCalledWith(expect.objectContaining({ method: "POST", url: "/repositories/repo/observability/activation-plans", data: { cloud_target_id: "target", service_key: "api", intent: "enable" } }));
+});
+
+it("starts and retries only the exact accepted revision and fingerprint with the supplied key", async () => {
+  const request = { expected_plan_digest: "f".repeat(64), expected_revision: 7 };
+  await observabilityService.startOperation("plan", request, "key");
+  expect(api.raw.request).toHaveBeenLastCalledWith(expect.objectContaining({ url: "/observability/activation-plans/plan/operations", data: request, headers: { "Idempotency-Key": "key" } }));
+  await observabilityService.retryOperation("operation", request, "retry-key");
+  expect(api.raw.request).toHaveBeenLastCalledWith(expect.objectContaining({ url: "/observability/operations/operation/retries", data: request, headers: { "Idempotency-Key": "retry-key" } }));
+});
+
+it("includes the exact scope and optional plan when recovering an uncertain submission", async () => {
+  await observabilityService.operations("repo", "target", "app", "plan");
+  expect(api.raw.request).toHaveBeenCalledWith(expect.objectContaining({ method: "GET", params: { cloud_target_id: "target", service_key: "app", plan_id: "plan", limit: 20, offset: 0 } }));
+});
+
+it("preserves Retry-After so status polling can respect server backoff", async () => {
+  vi.mocked(api.raw.request).mockResolvedValue({ data: {}, status: 429, headers: { "retry-after": "120" } });
+  await expect(observabilityService.context("repo", "target", "app")).rejects.toMatchObject({ status: 429, code: "rate_limited", details: { retry_after_ms: 120000 } });
+});
+
+it("acknowledges an incident without conflating acknowledgement with resolution", async () => {
+  await observabilityService.acknowledgeIncident("incident");
+  expect(api.raw.request).toHaveBeenLastCalledWith(expect.objectContaining({ method: "POST", url: "/observability/incidents/incident/acknowledge" }));
+  expect(vi.mocked(api.raw.request).mock.calls.at(-1)?.[0]).not.toHaveProperty("data");
+});
+
+it("saves only the explicit binding policy and does not enable a notification channel", async () => {
+  await observabilityService.saveAlertPolicy("binding", { enabled: false, latency_budget_ms: null });
+  expect(api.raw.request).toHaveBeenLastCalledWith(expect.objectContaining({ method: "PUT", url: "/observability/bindings/binding/alert-policy", data: { enabled: false, latency_budget_ms: null } }));
 });
 describe("Grafana external launch", () => {
   it("opens on the gesture, disowns opener, then sends only the ticket by POST", async () => {

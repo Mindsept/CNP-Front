@@ -14,7 +14,8 @@ export function useObservabilityPermissions(projectId?: string) {
   const user = useQuery({ queryKey: ["observability", "identity"], queryFn: () => authService.me(), enabled: Boolean(projectId), retry: false, staleTime: 30000 });
   const project = useQuery({ queryKey: ["project", projectId], queryFn: () => projectService.get(projectId!), enabled: Boolean(projectId), retry: false });
   const role = project.data?.members?.find(m => m.user_id === user.data?.id)?.role;
-  return { canManage: !user.isError && !project.isError && Boolean(user.data && project.data && (user.data.role === "admin" || role === "owner" || role === "maintainer")) };
+  return { isPending: user.isPending || project.isPending, isError: user.isError || project.isError,
+    canManage: !user.isError && !project.isError && Boolean(user.data && project.data && (user.data.role === "admin" || role === "owner" || role === "maintainer")) };
 }
 export const observabilityReasons: Record<string, string> = {
   observability_target_unsupported: "This profile currently requires an Azure AKS target.",

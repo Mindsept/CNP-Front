@@ -3,207 +3,257 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { RepositoryObservabilityPanel } from "./repository-observability-panel";
-import { observabilityService as obs } from "@/services/observability.service";
-import { authService } from "@/services/auth.service";
-import { projectService } from "@/services/project.service";
+import { observabilityService as obs, openBindingGrafana } from "@/services/observability.service";
+import { mcpService } from "@/services/mcp.service";
+import { useAuth } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/errors";
 import type { CdPreview } from "@/types/cd";
-import type { ObservabilityPlan, ObservabilityBinding } from "@/types/observability";
-vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn(), availability: vi.fn(), bind: vi.fn(), prepare: vi.fn(), plan: vi.fn(), approve: vi.fn(), retry: vi.fn() } }));
-vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
-vi.mock("@/services/project.service", () => ({ projectService: { get: vi.fn() } }));
-const planId = "00000000-0000-4000-8000-000000000001";
-const pipeline = { cd_pipeline_id: "pipeline", repository_id: "repo", cloud_target_id: "target", app_name: "commerce", image: "ghcr.io/team/commerce", image_tag: "latest" } as CdPreview;
-const binding = { binding_id: "binding", project_id: "project", repository_id: "repo", cloud_target_id: "target", service_key: "commerce", status: "disabled", config_revision: 0, environment: "dev", reason_code: null } as ObservabilityBinding;
-const plan: ObservabilityPlan = { plan_id: planId, binding_id: "binding", cd_pipeline_id: "pipeline", binding_revision: 0, enabled: true, status: "preview", reason_code: null, artifact_digest: "a".repeat(64), image_reference: "ghcr.io/team/commerce@sha256:" + "b".repeat(64), files: { "observability/config.yaml": "safe preview" }, sdk_environment: {}, prerequisites: ["SDK required"], deployable: false, created_at: "2026-10-19T12:00:00Z" };
-function setup(search = "") {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const view = render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/repositories/repo/cd" + search]}><RepositoryObservabilityPanel projectId="project" repositoryId="repo" pipeline={pipeline}/></MemoryRouter></QueryClientProvider>);
-  return { ...view, client };
+import type { ActivationPlan, ObservabilityContext, ObservabilityOperation } from "@/types/observability";
+import { contextFixture, planFixture, operationFixture } from "./observability-test-fixtures";
+
+vi.mock("@/hooks/use-auth", () => ({ useAuth: vi.fn() }));
+vi.mock("@/services/mcp.service", () => ({ mcpService: { deploymentPermissions: vi.fn() } }));
+vi.mock("@/services/observability.service", () => ({ observabilityService: { context: vi.fn(), prepareActivationPlan: vi.fn(), operations: vi.fn(), operation: vi.fn(), startOperation: vi.fn(), retryOperation: vi.fn(), incidents: vi.fn(), alertPolicy: vi.fn() }, openBindingGrafana: vi.fn() }));
+const scope = contextFixture.scope;
+const pipeline = { cd_pipeline_id: planFixture.cd_pipeline_id, repository_id: scope.repository_id, cloud_target_id: scope.cloud_target_id, app_name: scope.service_key, image: "ghcr.io/team/app", image_tag: "latest" } as CdPreview;
+function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
+function setup(search = "", selected: CdPreview | null = pipeline) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
+  const ui = (value: CdPreview | null) => <QueryClientProvider client={client}><MemoryRouter initialEntries={["/repositories/" + scope.repository_id + "/cd" + search]}><RepositoryObservabilityPanel projectId={scope.project_id} repositoryId={scope.repository_id} pipeline={value}/></MemoryRouter></QueryClientProvider>;
+  const view = render(ui(selected));
+  return { ...view, client, changePipeline: (value: CdPreview) => view.rerender(ui(value)) };
+}
+async function ready() {
+  const button = await screen.findByRole("button", { name: "Deploy this version and enable observability" });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
 }
 beforeEach(() => {
+  vi.mocked(mcpService.deploymentPermissions).mockReset().mockResolvedValue({ status: "ready", actions_permission: "write", message: "Ready", action_url: null, action_label: null });
   Object.values(obs).forEach(mock => vi.mocked(mock).mockReset());
-  vi.mocked(obs.list).mockResolvedValue({ items: [binding], total: 1, limit: 20, offset: 0 });
-  vi.mocked(obs.availability).mockResolvedValue({ available: true, reason_code: null, checked_at: "now" });
-  vi.mocked(obs.prepare).mockResolvedValue(plan);
-  vi.mocked(obs.plan).mockResolvedValue(plan);
-  vi.mocked(obs.bind).mockResolvedValue(binding);
-  vi.mocked(obs.approve).mockResolvedValue({ approval_id: "approval", plan_id: planId, binding_id: "binding", job_id: "job", status: "queued", execution_revision: 1 });
-  vi.mocked(authService.me).mockResolvedValue({ id: "user", role: "user" });
-  vi.mocked(projectService.get).mockResolvedValue({ id: "project", name: "Project", slug: "project", description: null, owner_id: "user", members: [{ user_id: "user", email: "demo@example.test", role: "maintainer" }] });
+  vi.mocked(useAuth).mockReturnValue({ user: { id: "actor" }, isLoading: false, error: null } as ReturnType<typeof useAuth>);
+  vi.mocked(obs.context).mockResolvedValue(structuredClone(contextFixture));
+  vi.mocked(obs.prepareActivationPlan).mockResolvedValue(structuredClone(planFixture));
+  vi.mocked(obs.operations).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+  vi.mocked(obs.operation).mockResolvedValue(structuredClone(operationFixture));
+  vi.mocked(obs.startOperation).mockResolvedValue(structuredClone(operationFixture));
+  vi.mocked(obs.incidents).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+  vi.mocked(obs.alertPolicy).mockResolvedValue({ binding_id: contextFixture.binding_id!, enabled: true, latency_budget_ms: null, status: "pending", reason_code: "observability_alerts_waiting_activation", suspended_until: null, applied_revision: null, last_reconciled_at: null, sms_enabled: false, availability_supported: false });
+  vi.mocked(openBindingGrafana).mockReset().mockResolvedValue();
 });
-
-describe("Observability retry", () => {
-  const failed: ObservabilityBinding = { ...binding, status: "failed", config_revision: 4, job_id: "failed-job" };
-
-  it("starts a failed operation again and uses a fresh key if that accepted attempt also fails", async () => {
-    let current = failed;
-    vi.mocked(obs.list).mockImplementation(async () => ({ items: [current], total: 1, limit: 20, offset: 0 }));
-    vi.mocked(obs.retry).mockImplementation(async () => {
-      current = { ...current, status: "preparing", job_id: "retry-job" };
-      return current;
+describe("Application observability activation", () => {
+  it("shows the red GitHub recovery link and blocks activation until permission is granted", async () => {
+    vi.mocked(mcpService.deploymentPermissions).mockResolvedValue({
+      status: "installation_update_required", actions_permission: "read",
+      message: "Approve the GitHub App update to allow this deployment.",
+      action_url: "https://github.com/settings/installations/123", action_label: "Change permissions",
     });
-    const { client } = setup();
-    const retry = await screen.findByRole("button", { name: "Retry observability" });
-    await waitFor(() => expect(retry).toBeEnabled());
-    fireEvent.click(retry);
-    await screen.findByText("Preparing");
-    expect(obs.retry).toHaveBeenCalledWith("binding", expect.any(String));
-    expect(screen.queryByRole("button", { name: "Retry observability" })).not.toBeInTheDocument();
-
-    // Retrying changes the job, but the backend keeps the configuration revision.
-    current = { ...current, status: "failed" };
-    await act(async () => { await client.invalidateQueries({ queryKey: ["observability", "bindings", "project"] }); });
-    const retryAgain = await screen.findByRole("button", { name: "Retry observability" });
-    await waitFor(() => expect(retryAgain).toBeEnabled());
-    fireEvent.click(retryAgain);
-    await screen.findByText("Preparing");
-    expect(obs.retry).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(obs.retry).mock.calls[1][1]).not.toBe(vi.mocked(obs.retry).mock.calls[0][1]);
-    expect(obs.prepare).not.toHaveBeenCalled();
-    expect(obs.approve).not.toHaveBeenCalled();
-  });
-
-  it("retains the same retry key when a network error leaves the outcome uncertain", async () => {
-    vi.mocked(obs.list).mockResolvedValue({ items: [failed], total: 1, limit: 20, offset: 0 });
-    vi.mocked(obs.retry).mockRejectedValueOnce(new Error("Connection lost before receiving the response")).mockResolvedValue({ ...failed, status: "preparing" });
     setup();
-    const retry = await screen.findByRole("button", { name: "Retry observability" });
-    await waitFor(() => expect(retry).toBeEnabled());
-    fireEvent.click(retry);
-    await screen.findByText("Connection lost before receiving the response");
-    await waitFor(() => expect(retry).toBeEnabled());
-    fireEvent.click(retry);
-    await waitFor(() => expect(obs.retry).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(obs.retry).mock.calls[1][1]).toBe(vi.mocked(obs.retry).mock.calls[0][1]);
+    const link = await screen.findByRole("link", { name: "Change permissions" });
+    expect(link).toHaveAttribute("href", "https://github.com/settings/installations/123");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveClass("bg-destructive/90");
+    expect(await screen.findByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+    expect(obs.startOperation).not.toHaveBeenCalled();
   });
-
-  it("sends only one retry while a double click is pending", async () => {
-    vi.mocked(obs.list).mockResolvedValue({ items: [failed], total: 1, limit: 20, offset: 0 });
-    vi.mocked(obs.retry).mockImplementation(() => new Promise(() => { }));
-    setup();
-    const retry = await screen.findByRole("button", { name: "Retry observability" });
-    await waitFor(() => expect(retry).toBeEnabled());
-    fireEvent.click(retry);
-    fireEvent.click(retry);
-    expect(retry).toBeDisabled();
-    expect(obs.retry).toHaveBeenCalledOnce();
+  it("rechecks permissions and refreshes the proposal without starting a deployment", async () => {
+    vi.mocked(mcpService.deploymentPermissions).mockResolvedValue({
+      status: "installation_update_required", actions_permission: "read", message: "Approve the update.",
+      action_url: "https://github.com/settings/installations/123", action_label: "Change permissions",
+    });
+    const view = setup();
+    await screen.findByRole("link", { name: "Change permissions" });
+    await waitFor(() => expect(obs.prepareActivationPlan).toHaveBeenCalledOnce());
+    vi.mocked(mcpService.deploymentPermissions).mockResolvedValue({
+      status: "ready", actions_permission: "write", message: "Ready", action_url: null, action_label: null,
+    });
+    await act(async () => { await view.client.refetchQueries({ queryKey: ["repository", scope.repository_id, "deployment-permissions"] }); });
+    await waitFor(() => expect(obs.prepareActivationPlan).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Change permissions" })).not.toBeInTheDocument());
+    await ready();
+    expect(obs.startOperation).not.toHaveBeenCalled();
   });
-
-  it("explains degraded telemetry and refreshes its status without retrying the operation", async () => {
-    let current: ObservabilityBinding = { ...failed, status: "degraded" };
-    vi.mocked(obs.list).mockImplementation(async () => ({ items: [current], total: 1, limit: 20, offset: 0 }));
+  it("blocks deployment when the permission check is unavailable", async () => {
+    vi.mocked(mcpService.deploymentPermissions).mockRejectedValue(new Error("private-provider-body"));
     setup();
-    await screen.findByText("Degraded");
-    expect(screen.getByText(/CNP checks again automatically/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Retry observability" })).not.toBeInTheDocument();
-    current = { ...current, status: "active" };
+    await screen.findByRole("button", { name: "Check permissions again" });
+    expect(await screen.findByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+    expect(screen.queryByText("private-provider-body")).not.toBeInTheDocument();
+    expect(obs.startOperation).not.toHaveBeenCalled();
+  });
+  it("prepares automatically, displays immutable effects, and executes only on the explicit click", async () => {
+    setup();
+    const button = await ready();
+    expect(obs.prepareActivationPlan).toHaveBeenCalledWith(scope.repository_id, scope.cloud_target_id, scope.service_key, "enable", expect.any(AbortSignal));
+    expect(screen.queryByLabelText(/Image digest/)).not.toBeInTheDocument();
+    expect(screen.getByText(/restarts the application in two rollouts/)).toBeInTheDocument();
+    expect(screen.getByText(/latest push failed CI/)).toBeInTheDocument();
+    expect(obs.startOperation).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    await screen.findByText("Queued");
+    expect(obs.startOperation).toHaveBeenCalledWith(planFixture.plan_id, { expected_plan_digest: planFixture.plan_digest, expected_revision: 4 }, expect.any(String));
+  });
+  it("does not submit a second operation on double click", async () => {
+    vi.mocked(obs.startOperation).mockImplementation(() => new Promise(() => {}));
+    setup();
+    const button = await ready();
+    fireEvent.click(button); fireEvent.click(button);
+    expect(obs.startOperation).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Check original request" })).toBeDisabled();
+  });
+  it("restores a lost response after reload and replays the exact request/key, never a new plan", async () => {
+    vi.mocked(obs.startOperation).mockRejectedValueOnce(new Error("Connection lost"));
+    const first = setup();
+    fireEvent.click(await ready());
+    await screen.findByText("Connection lost");
+    const original = vi.mocked(obs.startOperation).mock.calls[0];
+    first.unmount(); first.client.clear();
+    vi.mocked(obs.prepareActivationPlan).mockClear();
+    setup();
+    const replay = await screen.findByRole("button", { name: "Check original request" });
+    await waitFor(() => expect(replay).toBeEnabled());
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+    fireEvent.click(replay);
+    await screen.findByText("Queued");
+    expect(vi.mocked(obs.startOperation).mock.calls[1]).toEqual(original);
+    expect(sessionStorage.length).toBe(0);
+  });
+  it("recovers an accepted operation from server history without replaying a POST", async () => {
+    vi.mocked(obs.startOperation).mockRejectedValueOnce(new Error("Connection lost"));
+    const first = setup(); fireEvent.click(await ready()); await screen.findByText("Connection lost"); first.unmount(); first.client.clear();
+    vi.mocked(obs.operations).mockResolvedValue({ items: [operationFixture], total: 1, limit: 20, offset: 0 });
+    setup(); await screen.findByText("Queued");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Check original request" })).not.toBeInTheDocument());
+    expect(obs.startOperation).toHaveBeenCalledOnce();
+  });
+  it("reads a historical binding as Viewer without preparing any plan", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, can_manage: false });
+    setup(); await screen.findByText(/Viewer access/);
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Enable observability" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Logs (opens a new tab)" }));
+    await waitFor(() => expect(openBindingGrafana).toHaveBeenCalledWith(contextFixture.binding_id, "logs"));
+  });
+  it("does not label pending permissions as Viewer", async () => {
+    vi.mocked(obs.context).mockImplementation(() => new Promise(() => {}));
+    setup(); await screen.findByText(/Checking permissions and observability/);
+    expect(screen.queryByText(/Viewer access/)).not.toBeInTheDocument();
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+  });
+  it("shows unsupported prerequisites without preparing or executing", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, capabilities: { ...contextFixture.capabilities, enable: { available: false, reason_code: "unsupported_target", message: "This target is not supported." } } });
+    setup(); await screen.findByText("This target is not supported.");
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Enable observability" })).toBeDisabled();
+  });
+  it("keeps no_change read-only without retrying preparation in a loop", async () => {
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, status: "no_change", effects: [] });
+    setup(); await screen.findByText(/Configuration is up to date/);
+    expect(obs.prepareActivationPlan).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+    expect(obs.startOperation).not.toHaveBeenCalled();
+  });
+  it("requires a newly presented plan after an obsolete-plan response", async () => {
+    vi.mocked(obs.startOperation).mockRejectedValueOnce(new ApiError("Plan has changed", 409, "plan_obsolete"));
+    setup(); fireEvent.click(await ready()); await screen.findByText(/This plan is expired or obsolete/);
+    expect(obs.prepareActivationPlan).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, plan_digest: "f".repeat(64) });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh plan" }));
+    await ready(); expect(obs.startOperation).toHaveBeenCalledOnce();
+  });
+  it("disables an expired plan before submission", async () => {
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, expires_at: "2000-01-01T00:00:00Z" });
+    setup(); await screen.findByText(/This plan is expired or obsolete/);
+    expect(screen.getByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+  });
+  it("ignores a late plan after the application/target changes", async () => {
+    const late = deferred<ActivationPlan>();
+    vi.mocked(obs.prepareActivationPlan).mockReturnValueOnce(late.promise);
+    const view = setup(); await waitFor(() => expect(obs.prepareActivationPlan).toHaveBeenCalledOnce());
+    const nextScope = { ...scope, cloud_target_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", service_key: "other-app" };
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, scope: nextScope });
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, scope: nextScope, candidate_image: { ...planFixture.candidate_image!, image_commit_sha: "e".repeat(40) } });
+    view.changePipeline({ ...pipeline, cloud_target_id: nextScope.cloud_target_id, app_name: nextScope.service_key });
+    await screen.findByText("eeeeeeeeeeee");
+    await act(async () => late.resolve(planFixture));
+    expect(screen.queryByText("dddddddddddd")).not.toBeInTheDocument();
+    expect(obs.startOperation).not.toHaveBeenCalled();
+  });
+  it("uses linked binding scope even if the original CD preview is absent", async () => {
+    setup(`?obsTarget=${scope.cloud_target_id}&obsService=${scope.service_key}`, null);
+    await ready();
+    expect(obs.context).toHaveBeenCalledWith(scope.repository_id, scope.cloud_target_id, scope.service_key, expect.any(AbortSignal));
+  });
+  it("allows OFF even when ON is unsupported and does not require a candidate image", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, capabilities: { ...contextFixture.capabilities, enable: { available: false, reason_code: "unsupported_target", message: "Enable unavailable" } } });
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, intent: "disable", candidate_image: null, selection_context: null, deployment_required: false, effects: [{ code: "preserve_application", description: "Keep the application running." }] });
+    setup(); await screen.findByText("Enable unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    const button = await screen.findByRole("button", { name: "Disable observability" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(obs.prepareActivationPlan).toHaveBeenCalledWith(scope.repository_id, scope.cloud_target_id, scope.service_key, "disable", expect.any(AbortSignal));
+  });
+  it("shows status read failures without treating them as Disabled or allowing execution", async () => {
+    vi.mocked(obs.context).mockRejectedValue(new Error("Offline"));
+    setup(); await screen.findByText(/Current observability status is unavailable/);
+    expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+  });
+  it("keeps activation disabled when the server rejects outdated instrumentation", async () => {
+    vi.mocked(obs.prepareActivationPlan).mockResolvedValue({ ...planFixture, status: "blocked", blockers: [{ code: "instrumentation_required", message: "Update the application observability SDK before enabling collection.", recovery_action: "configure_instrumentation", operation_id: null }] });
+    setup();
+    await screen.findByText(/Update the application observability SDK/);
+    expect(screen.getByRole("button", { name: "Deploy this version and enable observability" })).toBeDisabled();
+    expect(obs.startOperation).not.toHaveBeenCalled();
+  });
+  it("refreshes degraded collection using GET only", async () => {
+    const current: ObservabilityContext = { ...contextFixture, can_manage: false, health: { ...contextFixture.health, status: "degraded" } };
+    vi.mocked(obs.context).mockResolvedValue(current);
+    setup(); await screen.findByText("Degraded");
+    vi.mocked(obs.context).mockResolvedValue({ ...current, health: { ...current.health, status: "active" } });
     fireEvent.click(screen.getByRole("button", { name: "Refresh observability status" }));
     await screen.findByText("Active");
-    expect(screen.queryByText("Degraded")).not.toBeInTheDocument();
-    expect(obs.retry).not.toHaveBeenCalled();
+    expect(obs.startOperation).not.toHaveBeenCalled(); expect(obs.retryOperation).not.toHaveBeenCalled();
   });
-
-  it("does not let a Viewer retry a failed operation", async () => {
-    vi.mocked(obs.list).mockResolvedValue({ items: [failed], total: 1, limit: 20, offset: 0 });
-    vi.mocked(projectService.get).mockResolvedValue({ id: "project", name: "Project", slug: "project", description: null, owner_id: "other", members: [{ user_id: "user", email: "demo@example.test", role: "viewer" }] });
+  it("blocks a result from another scope", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, scope: { ...scope, service_key: "foreign" } });
+    setup(); await screen.findByText(/Current observability status is unavailable/);
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
+  });
+  it("explains stale verification as unknown collection health", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, can_manage: false, health: { ...contextFixture.health, status: "unknown", reason_code: "observability_verification_stale" } });
     setup();
-    await screen.findByText("Failed");
-    const retry = screen.getByRole("button", { name: "Retry observability" });
-    expect(retry).toBeDisabled();
-    fireEvent.click(retry);
-    expect(obs.retry).not.toHaveBeenCalled();
+    await screen.findByText(/The last telemetry verification is stale/);
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
   });
-});
-async function digest() { fireEvent.change(await screen.findByLabelText("Image digest (SHA-256)"), { target: { value: "sha256:" + "b".repeat(64) } }); }
-describe("Observability CD review", () => {
-  it("requires a digest and human confirmation; rendering and preparation never approve", async () => {
-    setup();
-    await screen.findByText("Disabled");
-    expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeDisabled();
-    await digest();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Prepare configuration" }));
-    await screen.findByRole("dialog");
-    expect(obs.approve).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Approve activation" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Approve activation" }));
-    await waitFor(() => expect(obs.approve).toHaveBeenCalledOnce());
-    expect(obs.prepare).toHaveBeenCalledWith("repo", "binding", "pipeline", true, "sha256:" + "b".repeat(64));
-    expect(obs.bind).not.toHaveBeenCalled();
+  it("does not offer retry for an uncertain external effect", async () => {
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, latest_operation_id: operationFixture.operation_id });
+    vi.mocked(obs.operation).mockResolvedValue({ ...operationFixture, status: "running", stage: "reconciling_external_effect" });
+    setup(); await screen.findByText("Reconciling deployment status");
+    expect(screen.queryByRole("button", { name: "Retry observability" })).not.toBeInTheDocument();
+    expect(obs.prepareActivationPlan).not.toHaveBeenCalled();
   });
-  it("does not allow a Viewer to prepare or approve an existing review", async () => {
-    vi.mocked(projectService.get).mockResolvedValue({ id: "project", name: "Project", slug: "project", description: null, owner_id: "other", members: [{ user_id: "user", email: "demo@example.test", role: "viewer" }] });
-    setup("?obsPlan=" + planId);
-    await screen.findByRole("dialog");
-    expect(screen.getByRole("button", { name: "Prepare configuration", hidden: true })).toBeDisabled();
-    expect(screen.getByRole("checkbox")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Approve activation" })).toBeDisabled();
-    expect(obs.approve).not.toHaveBeenCalled();
-  });
-  it("reloads a persisted review and rejects an obsolete plan", async () => {
-    vi.mocked(obs.plan).mockResolvedValue({ ...plan, status: "obsolete" });
-    setup("?obsPlan=" + planId);
-    await screen.findByText(/This plan is obsolete/);
-    expect(obs.prepare).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Approve activation" })).toBeDisabled();
-  });
-  it("does not open a review belonging to another pipeline", async () => {
-    vi.mocked(obs.plan).mockResolvedValue({ ...plan, cd_pipeline_id: "other" });
-    setup("?obsPlan=" + planId);
-    await screen.findByText(/belongs to another CD selection/);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(obs.approve).not.toHaveBeenCalled();
-  });
-  it("blocks mutation if existing settings are unavailable", async () => {
-    vi.mocked(obs.list).mockRejectedValue(new Error("Offline"));
-    setup();
-    await screen.findByText(/Existing observability settings could not be loaded/);
-    await digest();
-    expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeDisabled();
-    expect(obs.bind).not.toHaveBeenCalled();
-  });
-  it("explains unsupported targets without offering activation", async () => {
-    vi.mocked(obs.availability).mockResolvedValue({ available: false, reason_code: "observability_target_unsupported", checked_at: "now" });
-    setup();
-    await screen.findByText(/requires an Azure AKS target/);
-    await digest();
-    expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeDisabled();
-  });
-  it("allows an OFF plan for an existing binding even if ON is unavailable", async () => {
-    vi.mocked(obs.availability).mockResolvedValue({ available: false, reason_code: "observability_not_configured", checked_at: "now" });
-    vi.mocked(obs.prepare).mockResolvedValue({ ...plan, enabled: false });
-    vi.mocked(obs.plan).mockResolvedValue({ ...plan, enabled: false });
-    setup();
-    await screen.findByText("Disabled");
-    fireEvent.click(screen.getByRole("switch"));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Prepare configuration" }));
-    await screen.findByRole("dialog");
-    expect(obs.prepare).toHaveBeenCalledWith("repo", "binding", "pipeline", false, "");
-    expect(obs.approve).not.toHaveBeenCalled();
-  });
-  it("guards double click while preparation is running", async () => {
-    vi.mocked(obs.prepare).mockImplementation(() => new Promise(() => { }));
-    setup();
-    await digest();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Prepare configuration" })).toBeEnabled());
-    const button = screen.getByRole("button", { name: "Prepare configuration" });
-    fireEvent.click(button);
-    fireEvent.click(button);
-    await waitFor(() => expect(obs.prepare).toHaveBeenCalledOnce());
-    expect(obs.approve).not.toHaveBeenCalled();
-  });
-  it("reuses the exact approval key after a transient failure", async () => {
-    vi.mocked(obs.approve).mockRejectedValueOnce(new Error("Temporarily unavailable"));
-    setup("?obsPlan=" + planId);
-    await screen.findByRole("dialog");
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Approve activation" }));
-    await screen.findAllByText("Temporarily unavailable");
-    await waitFor(() => expect(screen.getByRole("button", { name: "Approve activation" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Approve activation" }));
-    await waitFor(() => expect(obs.approve).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(obs.approve).mock.calls[0][1]).toBe(vi.mocked(obs.approve).mock.calls[1][1]);
+  it("creates a fresh retry key only after an accepted attempt fails again", async () => {
+    const failed: ObservabilityOperation = { ...operationFixture, status: "failed", retryable: true, next_action: "retry", failure: { code: "verification_timeout", message: "Signals missing" }, completed_at: "2026-10-29T12:10:00Z" };
+    vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, desired_revision: 5, latest_operation_id: failed.operation_id });
+    vi.mocked(obs.operation).mockResolvedValue(failed);
+    const retried = { ...failed, operation_id: "66666666-6666-4666-8666-666666666666", previous_operation_id: failed.operation_id, attempt_number: 2 };
+    vi.mocked(obs.retryOperation).mockImplementation(async () => {
+      vi.mocked(obs.context).mockResolvedValue({ ...contextFixture, desired_revision: 5, latest_operation_id: retried.operation_id });
+      vi.mocked(obs.operation).mockResolvedValue(retried);
+      return retried;
+    });
+    setup(); const retry = await screen.findByRole("button", { name: "Retry observability" });
+    await waitFor(() => expect(retry).toBeEnabled()); fireEvent.click(retry);
+    await screen.findByText(/Attempt 2/);
+    const retryAgain = screen.getByRole("button", { name: "Retry observability" });
+    await waitFor(() => expect(retryAgain).toBeEnabled()); fireEvent.click(retryAgain);
+    await waitFor(() => expect(obs.retryOperation).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(obs.retryOperation).mock.calls[1][0]).toBe(retried.operation_id);
+    expect(vi.mocked(obs.retryOperation).mock.calls[1][2]).not.toBe(vi.mocked(obs.retryOperation).mock.calls[0][2]);
   });
 });
