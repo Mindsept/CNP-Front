@@ -47,6 +47,8 @@ const initialForm = {
   region: "polandcentral",
   cluster_name: "aks-cnp-demo",
   namespace: "cnp-demo",
+  sku_tier: "unknown",
+  control_plane_zonal: "unknown",
   tenant_id: "",
   subscription_id: "",
   resource_group: "rg-cnp-demo",
@@ -144,6 +146,11 @@ export function CloudTargetDialog({
         region: ct.region ?? current.region,
         cluster_name: ct.cluster_name ?? current.cluster_name,
         namespace: ct.namespace ?? current.namespace,
+        sku_tier: ["Free", "Standard", "Premium"].find(
+          (tier) => tier.toLowerCase() === String(ct.config?.sku_tier).toLowerCase(),
+        ) ?? "unknown",
+        control_plane_zonal: typeof ct.config?.control_plane_zonal === "boolean"
+          ? String(ct.config.control_plane_zonal) : "unknown",
         tenant_id: ct.config?.tenant_id ?? current.tenant_id,
         subscription_id:
           ct.config?.subscription_id ?? current.subscription_id,
@@ -206,6 +213,8 @@ export function CloudTargetDialog({
       ...(form.dbaas_role_arn.trim() ? { dbaas_role_arn: form.dbaas_role_arn.trim() } : {}),
       runner_labels: form.runner_labels.split(",").map((label) => label.trim()).filter(Boolean),
     } : {
+      sku_tier: form.sku_tier === "unknown" ? undefined : form.sku_tier,
+      control_plane_zonal: form.control_plane_zonal === "unknown" ? undefined : form.control_plane_zonal === "true",
       tenant_id: form.tenant_id.trim() || undefined,
       subscription_id: form.subscription_id.trim() || undefined,
       resource_group: form.resource_group.trim() || undefined,
@@ -329,6 +338,29 @@ export function CloudTargetDialog({
                 onChange={(v) => setForm({ ...form, namespace: v })}
               />
               {provider === "azure" ? <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ct-sku-tier" className="text-xs">Offre AKS</Label>
+                  <Select value={form.sku_tier} onValueChange={(sku_tier) => setForm({ ...form, sku_tier })}>
+                    <SelectTrigger id="ct-sku-tier"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">Non renseignée</SelectItem>
+                      <SelectItem value="Free">Free</SelectItem>
+                      <SelectItem value="Standard">Standard</SelectItem>
+                      <SelectItem value="Premium">Premium</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ct-control-plane-zonal" className="text-xs">Plan de contrôle AKS sur plusieurs zones</Label>
+                  <Select value={form.control_plane_zonal} onValueChange={(control_plane_zonal) => setForm({ ...form, control_plane_zonal })}>
+                    <SelectTrigger id="ct-control-plane-zonal"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">Non renseigné</SelectItem>
+                      <SelectItem value="true">Oui</SelectItem>
+                      <SelectItem value="false">Non</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Field id="ct-rg" label="Resource group" value={form.resource_group} onChange={(v) => setForm({ ...form, resource_group: v })} />
                 <Field id="ct-tenant" label="Azure tenant ID" value={form.tenant_id} onChange={(v) => setForm({ ...form, tenant_id: v })} />
                 <Field id="ct-sub" label="Azure subscription ID" value={form.subscription_id} onChange={(v) => setForm({ ...form, subscription_id: v })} />
