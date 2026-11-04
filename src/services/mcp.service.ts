@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import { getValidAccessToken } from "@/auth/oidc-client";
 import { env } from "@/config/env";
-import type { Action, ActionType, Challenge, Connection, McpPolicy, RunProgress } from "@/types/mcp";
+import type { Action, ActionType, Challenge, Connection, GithubDeploymentPermissions, McpPolicy, RunProgress } from "@/types/mcp";
 
 let browserSession: { token: string; csrf: string } | null = null;
 let pending: { token: string; promise: Promise<string> } | null = null;
@@ -31,6 +31,8 @@ async function browserPost<T>(url: string, body?: unknown): Promise<T> {
   return api.post<T>(url, body, { headers: { "X-CNP-CSRF": await csrf() } });
 }
 export const mcpService = {
+  deploymentPermissions: (repositoryId: string, signal?: AbortSignal) =>
+    api.get<GithubDeploymentPermissions>(`/repositories/${repositoryId}/deployment-permissions`, { signal }),
   connections: () => api.get<{ items: Connection[] }>("/oauth/connections"),
   async revoke(id: string) { return api.delete(`/oauth/connections/${id}`, { headers: { "X-CNP-CSRF": await csrf() } }); },
   async logout() {

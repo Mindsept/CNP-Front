@@ -10,3 +10,10 @@ export interface Connection { id: string; client_name: string; scopes: string[];
 export interface McpPolicy { enabled: boolean; target_ids: string[]; version: number; }
 export interface RunProgress { run_id: string; status: string; actions: Pick<Action, "id" | "type" | "status" | "job_id" | "effects" | "error_code">[];
   next_action?: string | null; arguments?: Record<string, string>; guidance?: string; }
+export interface GithubDeploymentPermissions {
+  status: "ready" | "app_update_required" | "installation_update_required" | "unavailable";
+  actions_permission: string | null;
+  message: string;
+  action_url: string | null;
+  action_label: string | null;
+}

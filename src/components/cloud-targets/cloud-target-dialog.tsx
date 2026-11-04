@@ -136,7 +136,7 @@ export function CloudTargetDialog({
       }
       const nextProvider: CloudProvider = ct.provider === "aws" && ct.cluster_type === "eks" ? "aws" : "azure";
       setProvider(nextProvider);
-      setContractConfigExtras(nextProvider === "aws" && ct.config && typeof ct.config === "object" ? ct.config : {});
+      setContractConfigExtras(ct.config && typeof ct.config === "object" ? ct.config : {});
       setForm((current) => ({
         ...current,
         name: ct.name ?? current.name,
@@ -206,6 +206,7 @@ export function CloudTargetDialog({
       ...(form.dbaas_role_arn.trim() ? { dbaas_role_arn: form.dbaas_role_arn.trim() } : {}),
       runner_labels: form.runner_labels.split(",").map((label) => label.trim()).filter(Boolean),
     } : {
+      ...contractConfigExtras,
       tenant_id: form.tenant_id.trim() || undefined,
       subscription_id: form.subscription_id.trim() || undefined,
       resource_group: form.resource_group.trim() || undefined,

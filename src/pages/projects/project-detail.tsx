@@ -1,3 +1,4 @@
+import { ProjectObservabilityCard } from "@/components/observability/project-observability-card";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -261,6 +262,7 @@ export function ProjectDetailPage() {
       </Card> : null}
 
       <ProjectDeploymentsSection projectId={id} />
+      <ProjectObservabilityCard projectId={id} targets={cloudTargets} />
     </div>
   );
 }
