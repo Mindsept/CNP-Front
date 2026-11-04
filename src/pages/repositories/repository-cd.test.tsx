@@ -18,12 +18,12 @@ vi.mock("@/services/container-registry.service", () => ({
 vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
 vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn() } }));
 
-function requirements(provider: "aws" | "azure"): CdRequirements {
+function requirements(provider: "aws" | "azure" | "private"): CdRequirements {
   return {
     repository_id: "repo",
     cloud_targets: [{
       id: "target", project_id: "project", name: "Cluster", environment: "dev",
-      provider, cluster_type: provider === "aws" ? "eks" : "aks", region: "test-region",
+      provider, cluster_type: provider === "private" ? "k3s" : provider === "aws" ? "eks" : "aks", region: "test-region",
       cluster_name: "cluster", namespace: "app", config: {}, kubeconfig_strategy: {},
       deployment_defaults: {}, created_at: "2026-01-01", updated_at: "2026-01-01",
     }],
@@ -62,7 +62,7 @@ describe("CD integration across MCP and database provisioning", () => {
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {
     vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
     renderPage();
-    await screen.findByText(/Human-reviewed CD currently supports Azure AKS only/);
+    await screen.findByText(/Human-reviewed CD supports Azure AKS and private k3s/);
     for (const button of screen.getAllByRole("button", { name: "Generate CD preview" })) expect(button).toBeDisabled();
     expect(cdService.preview).not.toHaveBeenCalled();
   });
@@ -90,4 +90,13 @@ describe("CD integration across MCP and database provisioning", () => {
       cloud_target_id: "target", kubeconfig_strategy: "azure_cli", include_image_pull_secret: false,
     })));
   });
+  it("uses the project ServiceAccount and ClusterIP for reviewed private targets", async () => {
+    vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
+    vi.mocked(cdService.requirements).mockResolvedValue(requirements("private"));
+    renderPage();
+    expect(await screen.findByText("Project ServiceAccount")).toBeInTheDocument();
+    expect(screen.queryByText(/Azure OIDC is preconfigured/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Applications are exposed through HTTPS ingress/)).toBeInTheDocument();
+  });
+
 });

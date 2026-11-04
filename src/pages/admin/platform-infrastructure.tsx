@@ -22,6 +22,7 @@ import {
   GcpLogo,
   GhcrLogo,
 } from "@/components/common/provider-logos";
+import { PrivateTargetsPanel } from "@/components/cloud-targets/private-targets-panel";
 import { CloudTargetDialog } from "@/components/cloud-targets/cloud-target-dialog";
 import { RegistryDialog } from "@/components/registries/registry-dialog";
 import { cloudTargetService } from "@/services/cloud-target.service";
@@ -134,6 +135,8 @@ export function PlatformInfrastructurePage() {
         title="Platform Infrastructure"
         description="Configure shared CD infrastructure once. Developers then select available global Cloud Nodes from their repository CD page."
       />
+
+      <PrivateTargetsPanel />
 
       {/* Container registry */}
       <SectionCard

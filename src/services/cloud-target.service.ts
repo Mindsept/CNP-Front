@@ -6,6 +6,14 @@ import type {
 } from "@/types/cloud-target";
 
 export const cloudTargetService = {
+  createForProject(projectId: string, input: CreateCloudTargetInput): Promise<CreateCloudTargetResponse> {
+    return api.post<CreateCloudTargetResponse>(`/projects/${projectId}/cloud-targets`, input);
+  },
+
+  check(targetId: string): Promise<{ cloud_target_id: string; reachable: boolean; namespace: string }> {
+    return api.post(`/cloud-targets/${targetId}/check`, {});
+  },
+
   // Developer view: project cloud targets, now including global nodes (project_id: null).
   list(projectId: string): Promise<CloudTargetListResponse> {
     return api.get<CloudTargetListResponse>(

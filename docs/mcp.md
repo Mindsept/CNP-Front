@@ -67,3 +67,11 @@ Les JSON/YAML/diffs sont rendus comme texte avec les composants existants ; aucu
 ## CD persistée et OIDC
 
 La page CD restaure les previews via `?pipeline=<UUID>` ou le plus récent. Les fichiers et opérations examinées peuvent être consultés après une création MCP ou un rechargement, sans régénération. Les projets activés utilisent Azure OIDC préconfiguré ; aucun client secret Azure ni kubeconfig à exporter n’est demandé. La fusion CD ne déclenche pas le déploiement : celui-ci conserve sa propre review. Le suivi du parcours examiné passe par les actions MCP ; l’ancien bloc de suivi CD automatique n’est pas affiché pour ces projets.
+
+## Cibles privées dans le portail
+
+Le parcours examiné du portail accepte aussi un k3s privé préparé par l'équipe.
+Il utilise un runner dans le cluster et un ServiceAccount de projet ; aucune
+identité Azure ou GCP n'est demandée. L'import et le suivi sont décrits dans
+[le guide privé](private-k3s.md). Les clients MCP restent limités à Azure AKS ;
+les targets privés leur sont masqués/refusés par l'API.

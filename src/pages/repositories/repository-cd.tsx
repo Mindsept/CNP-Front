@@ -67,6 +67,7 @@ const FILE_ORDER = [
   "k8s/secret.yaml",
   "k8s/deployment.yaml",
   "k8s/service.yaml",
+  "k8s/ingress.yaml",
 ];
 
 function fileLanguage(path: string): "yaml" | "json" {
@@ -207,8 +208,8 @@ export function RepositoryCdPage() {
         image_tag: imageTag.trim(),
         container_port: containerPort,
         replicas,
-        service_type: serviceType,
-        kubeconfig_strategy: reviewed ? "azure_cli" : kubeconfigStrategy,
+        service_type: isPrivateTarget ? "ClusterIP" : serviceType,
+        kubeconfig_strategy: isPrivateTarget ? "in_cluster" : reviewed ? "azure_cli" : kubeconfigStrategy,
         include_image_pull_secret: !reviewed && includeImagePullSecret,
         image_pull_secret_name: includeImagePullSecret
           ? imagePullSecretName.trim() || undefined
@@ -324,6 +325,7 @@ export function RepositoryCdPage() {
   const selectedTarget = requirements?.cloud_targets.find(
     (target) => target.id === cloudTargetId,
   );
+  const isPrivateTarget = selectedTarget?.provider === "private";
   const clusterLabel = selectedTarget
     ? selectedTarget.cluster_type.toUpperCase()
     : "Kubernetes";
@@ -331,7 +333,7 @@ export function RepositoryCdPage() {
     ? selectedTarget.provider.toUpperCase()
     : "cloud";
   const unsupportedReviewedTarget = reviewed && Boolean(selectedTarget) &&
-    (selectedTarget?.provider !== "azure" || selectedTarget?.cluster_type !== "aks");
+    !((selectedTarget?.provider === "azure" && selectedTarget?.cluster_type === "aks") || (isPrivateTarget && selectedTarget?.cluster_type === "k3s"));
 
   // Effective configured CD secrets (project + global registry/cloud node).
   const configuredCdKeys = useMemo(
@@ -366,7 +368,7 @@ export function RepositoryCdPage() {
 
   const missingProjectSecrets = preview?.missing_project_secrets ?? [];
   const canPreview = Boolean(
-    cloudTargetId && appName.trim() && image.trim() && imageTag.trim() && !unsupportedReviewedTarget,
+    cloudTargetId && appName.trim() && image.trim() && imageTag.trim() && !unsupportedReviewedTarget && (!isPrivateTarget || reviewed),
   );
 
   return (
@@ -380,7 +382,7 @@ export function RepositoryCdPage() {
           label: repoQuery.data?.full_name ?? "repository",
         }}
         title="CD workflow"
-        description={reviewed ? "Generate and review AKS files. Merging the CD PR does not deploy: a separate reviewed deployment is required." : `Generate Kubernetes manifests and a GitHub Actions deploy workflow for the selected ${providerLabel} ${clusterLabel} target. Deployment happens after the generated PR is merged to main.`}
+        description={reviewed ? "Generate and review Kubernetes deployment files. Merging the CD PR does not deploy: a separate reviewed deployment is required." : `Generate Kubernetes manifests and a GitHub Actions deploy workflow for the selected ${providerLabel} ${clusterLabel} target. Deployment happens after the generated PR is merged to main.`}
         actions={
           <Button
             onClick={() => previewMutation.mutate()}
@@ -393,9 +395,12 @@ export function RepositoryCdPage() {
         }
       />
 
+      {isPrivateTarget && !reviewed && <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
+        Private deployments require human-reviewed operations. Ask an administrator to enable them and authorize this target in project settings.
+      </div>}
       {unsupportedReviewedTarget && (
         <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
-          Human-reviewed CD currently supports Azure AKS only. Select an Azure AKS target for this MCP-enabled project.
+          Human-reviewed CD supports Azure AKS and private k3s targets in the portal.
           AWS EKS deployment remains available in projects without MCP review enabled.
         </div>
       )}
@@ -427,7 +432,7 @@ export function RepositoryCdPage() {
         <EmptyState
           icon={Cloud}
           title="No cloud node configured"
-          description="Ask a platform admin to register an AWS EKS or Azure AKS cluster before generating a CD pipeline."
+          description="Ask a platform admin to register an AWS EKS, Azure AKS or private k3s cluster before generating a CD pipeline."
         />
       ) : (
         <>
@@ -487,7 +492,7 @@ export function RepositoryCdPage() {
                   />
                 </FieldBlock>
 
-                <div>
+                <div hidden={isPrivateTarget}>
                   <FieldBlock label={selectedTarget?.provider === "aws" ? "Image tag (commit SHA from CI)" : "Image tag"}>
                     <Input
                       value={imageTag}
@@ -531,7 +536,8 @@ export function RepositoryCdPage() {
 
                 <FieldBlock label="Service type">
                   <Select
-                    value={serviceType}
+                    value={isPrivateTarget ? "ClusterIP" : serviceType}
+                    disabled={isPrivateTarget}
                     onValueChange={(v) =>
                       setServiceType(v as CdServiceType)
                     }
@@ -549,7 +555,7 @@ export function RepositoryCdPage() {
 
                 {selectedTarget?.provider !== "aws" ? <FieldBlock label="Kubeconfig strategy">
                   <Select
-                    value={reviewed ? "azure_cli" : kubeconfigStrategy}
+                    value={isPrivateTarget ? "in_cluster" : reviewed ? "azure_cli" : kubeconfigStrategy}
                     disabled={reviewed || reviewedPolicy.isPending}
                     onValueChange={(v) =>
                       setKubeconfigStrategy(v as CdKubeconfigStrategy)
@@ -559,6 +565,7 @@ export function RepositoryCdPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="in_cluster">Project ServiceAccount</SelectItem>
                       <SelectItem value="secret">
                         secret (KUBECONFIG_CONTENT)
                       </SelectItem>
@@ -575,7 +582,7 @@ export function RepositoryCdPage() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {reviewed && !unsupportedReviewedTarget && <p className="text-sm text-muted-foreground">Azure OIDC is preconfigured by CNP. No Azure client secret or kubeconfig export is required. Private image pull access must be preconfigured in the namespace.</p>}
+                {reviewed && !unsupportedReviewedTarget && <p className="text-sm text-muted-foreground">{isPrivateTarget ? "The project runner uses its Kubernetes ServiceAccount. Applications are exposed through HTTPS ingress; private image pull access is prepared by the infrastructure team." : "Azure OIDC is preconfigured by CNP. No Azure client secret or kubeconfig export is required. Private image pull access must be preconfigured in the namespace."}</p>}
                 {!reviewed && <>
                 <OptionRow
                   id="cd-pull-secret"
@@ -1095,6 +1102,8 @@ export function RepositoryCdPage() {
                     ) : null}
                   </div>
 
+                  {deployment?.deployment_details?.waiting_for && <p role="status" className="text-sm text-muted-foreground">Waiting for {deployment.deployment_details.waiting_for}.</p>}
+                  {deployment?.deployment_details?.error && <p role="alert" className="text-sm text-destructive">{deployment.deployment_details.error.message}</p>}
                   {deployment ? (
                     <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
                       <DeployKV label="App" value={deployment.app_name} mono />
@@ -1105,12 +1114,12 @@ export function RepositoryCdPage() {
                       />
                       <DeployKV
                         label="Image"
-                        value={`${deployment.image}:${deployment.image_tag}`}
+                        value={deployment.image.includes("@sha256:") ? deployment.image : `${deployment.image}:${deployment.image_tag}`}
                         mono
                       />
                       {deployment.external_ip ? (
                         <DeployKV
-                          label="External IP"
+                          label="Public address"
                           value={deployment.external_ip}
                           mono
                         />
