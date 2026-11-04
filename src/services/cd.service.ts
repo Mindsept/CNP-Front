@@ -11,6 +11,9 @@ import type {
 } from "@/types/cd";
 
 export const cdService = {
+  observeExisting(repositoryId: string, input: { cloud_target_id: string; app_name: string }): Promise<CdDeploymentStatus> {
+    return api.post<CdDeploymentStatus>(`/repositories/${repositoryId}/cd/observe-existing`, input);
+  },
   get(repositoryId: string, pipelineId: string): Promise<CdPreview> {
     return api.get<CdPreview>(`/repositories/${repositoryId}/cd/${pipelineId}`);
   },

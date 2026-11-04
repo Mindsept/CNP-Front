@@ -26,10 +26,10 @@ function jobLabel(job: AwsDatabaseJob) {
   if (job.status === "queued") return "En attente";
   if (job.status === "running") return job.operation === "delete" ? "Suppression en cours" : "Création en cours";
   if (job.status === "failed") return "Échec";
-  return job.operation === "delete" ? "Base supprimée" : "Base disponible";
+  return job.operation === "delete" ? "Base supprimée" : "Création terminée";
 }
 
-export function AwsEnvironmentPage() {
+export function AwsEnvironmentPage({ embedded = false }: { embedded?: boolean }) {
   const { projectId } = useParams<{ projectId: string }>();
   const id = projectId!;
   const queryClient = useQueryClient();
@@ -80,9 +80,9 @@ export function AwsEnvironmentPage() {
   const busy = jobs.some((job) => job.status === "queued" || job.status === "running") || createMutation.isPending;
 
   return <div className="space-y-6">
-    <PageHeader eyebrow={projectQuery.data ? `/${projectQuery.data.slug} · Base de données` : "Base de données"}
+    {!embedded ? <PageHeader eyebrow={projectQuery.data ? `/${projectQuery.data.slug} · Base de données` : "Base de données"}
       back={{ to: `/projects/${id}`, label: "Projet" }} title="Ajouter une base PostgreSQL"
-      description="Choisissez une cible EKS déjà configurée et, si nécessaire, demandez une base Amazon RDS PostgreSQL. Le cluster n’est pas recréé." />
+      description="Choisissez une cible EKS déjà configurée et, si nécessaire, demandez une base Amazon RDS PostgreSQL. Le cluster n’est pas recréé." /> : null}
 
     <Card className="space-y-6 p-6">
       <section className="space-y-4">
@@ -122,12 +122,12 @@ export function AwsEnvironmentPage() {
         <div className="flex items-center gap-3">{job.status === "succeeded" ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : job.status === "failed" ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <Loader2 className="h-5 w-5 animate-spin text-primary" />}
         <div><p className="font-medium">{jobLabel(job)}</p><p className="text-sm text-muted-foreground">{job.target_name} · PostgreSQL {job.region} · {job.database_name}</p></div><Badge className="ml-auto" variant={job.status === "succeeded" ? "success" : job.status === "failed" ? "danger" : "muted"}>{job.status}</Badge></div>
       {job.error ? <p className="mt-3 text-sm text-destructive">{job.error}</p> : null}
-      {job.result?.database?.endpoint ? <p className="mt-2 break-all text-sm">Endpoint : {job.result.database.endpoint}:{job.result.database.port} · secret CD : <code>{job.result.database.secret_key ?? "DATABASE_URL"}</code>.</p> : null}
+      {job.result?.database?.endpoint ? <p className="mt-2 break-all text-sm">Endpoint enregistré : {job.result.database.endpoint}:{job.result.database.port} · secret CD : <code>{job.result.database.secret_key ?? "DATABASE_URL"}</code>.</p> : null}
       {job.result?.deleted_outside_app ? <p className="mt-2 text-sm text-muted-foreground">Suppression vérifiée dans AWS ; historique synchronisé.</p> : null}
       {job.status === "failed" ? <Button className="mt-3" size="sm" variant="outline" disabled={retryMutation.isPending} onClick={() => retryMutation.mutate(job.id)}>Reprendre</Button> : null}
       {job.operation === "create" && job.status === "succeeded" ? <Button className="mt-3" size="sm" variant="destructive" disabled={deleteMutation.isPending} onClick={() => { if (window.confirm("Supprimer cette base RDS ? Une sauvegarde finale sera conservée.")) deleteMutation.mutate(job.id); }}><Trash2 className="mr-2 h-4 w-4" />Supprimer RDS</Button> : null}
       {job.operation === "create" && job.status === "succeeded" ? <Button className="mt-3 ml-2" size="sm" variant="outline" disabled={reconcileMutation.isPending} onClick={() => { if (window.confirm("Vérifier dans AWS que cette instance RDS a été supprimée manuellement, puis synchroniser l’historique ?")) reconcileMutation.mutate(job.id); }}><RefreshCw className="mr-2 h-4 w-4" />Vérifier la suppression dans AWS</Button> : null}
     </Card>)}
-    <Button variant="ghost" asChild><Link to={`/projects/${id}`}><ArrowLeft className="mr-2 h-4 w-4" />Retour au projet</Link></Button>
+    {!embedded ? <Button variant="ghost" asChild><Link to={`/projects/${id}`}><ArrowLeft className="mr-2 h-4 w-4" />Retour au projet</Link></Button> : null}
   </div>;
 }

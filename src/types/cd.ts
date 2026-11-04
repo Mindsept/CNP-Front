@@ -1,6 +1,7 @@
 import type { CloudTarget } from "./cloud-target";
 
 export type CdPipelineStatus =
+  | "observed"
   | "draft"
   | "generated"
   | "approved"

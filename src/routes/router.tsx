@@ -33,8 +33,7 @@ import { McpConnectionsPage } from "@/pages/mcp/connections";
 import { McpReviewsPage, McpReviewPage } from "@/pages/mcp/reviews";
 import { McpRunPage } from "@/pages/mcp/run";
 
-import { AwsEnvironmentPage } from "@/pages/projects/aws-environment";
-import { AzureEnvironmentPage } from "@/pages/projects/azure-environment";
+import { ProjectDatabasesPage } from "@/pages/projects/project-databases";
 
 export const router = createBrowserRouter([
   {
@@ -62,8 +61,9 @@ export const router = createBrowserRouter([
 
           { path: "/projects", element: <ProjectsListPage /> },
           { path: "/projects/:projectId", element: <ProjectDetailPage /> },
-          { path: "/projects/:projectId/aws-environment", element: <AwsEnvironmentPage /> },
-          { path: "/projects/:projectId/azure-environment", element: <AzureEnvironmentPage /> },
+          { path: "/projects/:projectId/databases", element: <ProjectDatabasesPage /> },
+          { path: "/projects/:projectId/aws-environment", element: <ProjectDatabasesPage initialCloud="aws" /> },
+          { path: "/projects/:projectId/azure-environment", element: <ProjectDatabasesPage initialCloud="azure" /> },
           {
             path: "/projects/:projectId/settings",
             element: <ProjectSettingsPage />,

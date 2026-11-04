@@ -25,10 +25,10 @@ function jobLabel(job: AzureDatabaseJob) {
   if (job.status === "queued") return "En attente";
   if (job.status === "running") return job.operation === "delete" ? "Suppression en cours" : "Création en cours";
   if (job.status === "failed") return "Échec";
-  return job.operation === "delete" ? "Base supprimée" : "Base disponible";
+  return job.operation === "delete" ? "Base supprimée" : "Création terminée";
 }
 
-export function AzureEnvironmentPage() {
+export function AzureEnvironmentPage({ embedded = false }: { embedded?: boolean }) {
   const { projectId } = useParams<{ projectId: string }>();
   const id = projectId!;
   const queryClient = useQueryClient();
@@ -65,9 +65,9 @@ export function AzureEnvironmentPage() {
   const creating = jobs.some((job) => job.status === "queued" || job.status === "running") || createMutation.isPending;
 
   return <div className="space-y-6">
-    <PageHeader eyebrow={projectQuery.data ? `/${projectQuery.data.slug} · Base de données Azure` : "Base de données Azure"}
+    {!embedded ? <PageHeader eyebrow={projectQuery.data ? `/${projectQuery.data.slug} · Base de données Azure` : "Base de données Azure"}
       back={{ to: `/projects/${id}`, label: "Projet" }} title="Bases PostgreSQL Azure"
-      description="Créez des serveurs Azure Database for PostgreSQL Flexible Server pour une cible AKS existante. AWS continue d’utiliser Amazon RDS." />
+      description="Créez des serveurs Azure Database for PostgreSQL Flexible Server pour une cible AKS existante. AWS continue d’utiliser Amazon RDS." /> : null}
 
     <Card className="space-y-6 p-6">
       <section className="space-y-4">
@@ -101,10 +101,10 @@ export function AzureEnvironmentPage() {
       <div className="flex items-center gap-3">{job.status === "succeeded" ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : job.status === "failed" ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <Loader2 className="h-5 w-5 animate-spin text-primary" />}
         <div><p className="font-medium">{jobLabel(job)}</p><p className="text-sm text-muted-foreground">{job.target_name} · PostgreSQL {job.region} · {job.database_name}</p></div><Badge className="ml-auto" variant={job.status === "succeeded" ? "success" : job.status === "failed" ? "danger" : "muted"}>{job.status}</Badge></div>
       {job.error ? <p className="mt-3 text-sm text-destructive">{job.error}</p> : null}
-      {job.result?.database?.endpoint ? <p className="mt-2 break-all text-sm">Endpoint : {job.result.database.endpoint}:5432 · secret CD : <code>{job.result.database.secret_key}</code>.</p> : null}
+      {job.result?.database?.endpoint ? <p className="mt-2 break-all text-sm">Endpoint enregistré : {job.result.database.endpoint}:5432 · secret CD : <code>{job.result.database.secret_key}</code>.</p> : null}
       {job.status === "failed" ? <Button className="mt-3" size="sm" variant="outline" disabled={retryMutation.isPending} onClick={() => retryMutation.mutate(job.id)}>Reprendre</Button> : null}
       {job.operation === "create" && job.status === "succeeded" ? <Button className="mt-3" size="sm" variant="destructive" disabled={deleteMutation.isPending} onClick={() => { if (window.confirm("Supprimer ce serveur PostgreSQL Azure et sa base ?")) deleteMutation.mutate(job.id); }}><Trash2 className="mr-2 h-4 w-4" />Supprimer le serveur</Button> : null}
     </Card>)}
-    <Button variant="ghost" asChild><Link to={`/projects/${id}`}><ArrowLeft className="mr-2 h-4 w-4" />Retour au projet</Link></Button>
+    {!embedded ? <Button variant="ghost" asChild><Link to={`/projects/${id}`}><ArrowLeft className="mr-2 h-4 w-4" />Retour au projet</Link></Button> : null}
   </div>;
 }
