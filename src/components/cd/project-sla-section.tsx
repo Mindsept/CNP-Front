@@ -10,7 +10,7 @@ const formatPercent = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 2,
 });
 const percentLabel = (percent: number) => formatPercent.format(percent / 100);
-const providerNames = { aws: "AWS", azure: "Azure", gcp: "Google Cloud" };
+const providerNames = { aws: "AWS", azure: "Azure", gcp: "Google Cloud", private: "Cloud privé" };
 
 export function ProjectSlaSection({ projectId }: { projectId: string }) {
   const deployments = useQuery({
