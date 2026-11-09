@@ -1,55 +1,48 @@
-import { useState } from "react";
+import { Layers2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { env } from "@/config/env";
-
 interface BrandProps {
   variant?: "full" | "mark";
   className?: string;
   size?: "sm" | "md" | "lg";
 }
-
-export function Brand({ variant = "full", className, size = "md" }: BrandProps) {
-  const [failed, setFailed] = useState(false);
-
-  const dim =
-    size === "sm" ? "h-7 w-7" : size === "lg" ? "h-10 w-10" : "h-8 w-8";
-  const textSize =
-    size === "sm"
-      ? "text-sm"
-      : size === "lg"
-        ? "text-lg"
-        : "text-base";
-
+export function Brand({
+  variant = "full",
+  className,
+  size = "md",
+}: BrandProps) {
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      {failed ? (
-        <div
-          className={cn(
-            "flex items-center justify-center rounded-md bg-primary/15 font-mono font-semibold text-primary ring-1 ring-primary/30",
-            dim,
-            size === "sm" ? "text-[10px]" : "text-xs",
+    <div className={cn("flex items-center gap-3", className)}>
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center text-primary",
+          size === "lg" ? "h-10 w-10" : "h-8 w-8",
+        )}
+      >
+        <Layers2
+          aria-hidden="true"
+          className={size === "lg" ? "h-9 w-9" : "h-7 w-7"}
+          strokeWidth={1.5}
+        />
+      </span>
+      {variant === "full" ? (
+        <div>
+          <span
+            className={cn(
+              "font-semibold leading-none tracking-[-0.04em]",
+              size === "sm" ? "text-xl" : "text-2xl",
+            )}
+          >
+            CNP<span className="text-primary">.</span>
+          </span>
+          {size !== "sm" && (
+            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[.16em] text-muted-foreground">
+              Cloud Native Platform
+            </span>
           )}
-        >
-          CNP
         </div>
       ) : (
-        <img
-          src="/logo.png"
-          alt="Cloud Native Platform"
-          className={cn("rounded-md object-contain", dim)}
-          onError={() => setFailed(true)}
-        />
+        <span className="sr-only">Cloud Native Platform</span>
       )}
-      {variant === "full" ? (
-        <div className="flex flex-col leading-tight">
-          <span className={cn("font-semibold tracking-tight", textSize)}>
-            {env.appName}
-          </span>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Internal Developer Platform
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }

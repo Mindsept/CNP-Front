@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -64,14 +65,14 @@ export function ObservabilityIncidents({ projectId, bindingId, canManage, permis
     {!permissionsPending && !canManage && <p className="text-xs text-muted-foreground">A project Maintainer or Owner is required to acknowledge incidents.</p>}
     {query.isPending && <p role="status" className="text-sm">Loading incidents…</p>}
     {query.isError && <p role="alert" className="text-sm text-destructive">Incidents could not be loaded. This does not mean there are no incidents.</p>}
-    {query.isSuccess && query.data.items.length === 0 && <p className="text-sm text-muted-foreground">{filter === "firing" ? "No open incidents." : "No incidents match this filter."}</p>}
-    {query.isSuccess && <div className="divide-y divide-border">{query.data.items.map(incident => <article className="space-y-2 py-3" key={incident.id}>
+    {query.isSuccess && query.data.items.length === 0 && <div className="flex items-center gap-3 rounded-lg border border-dashed border-border px-4 py-6"><Bell className="h-4 w-4 shrink-0 text-muted-foreground"/><p className="text-sm text-muted-foreground">{filter === "firing" ? "No open incidents." : "No incidents match this filter."}</p></div>}
+    {query.isSuccess && <div className="space-y-3">{query.data.items.map(incident => <article className={`space-y-3 rounded-lg border border-border bg-background/40 p-4 ${incident.technical_state === "firing" ? "border-l-2 border-l-destructive" : ""}`} key={incident.id}>
       <div className="flex flex-wrap items-center gap-2"><Badge variant={incident.severity === "critical" ? "danger" : "warning"}>{incident.severity === "critical" ? "Critical" : "Warning"}</Badge><span className="text-sm font-medium">{incident.title}</span><Badge variant={incident.technical_state === "resolved" ? "success" : "danger"}>{incident.technical_state === "resolved" ? "Resolved" : incident.technical_state === "firing" ? "Open" : "Unknown"}</Badge></div>
       <p className="break-words text-xs text-muted-foreground">{incident.service_key} · {incident.environment} · {incident.kind.replaceAll("_", " ")}</p>
       <p className="text-xs text-muted-foreground">Started {date(incident.started_at)} · Last observed {date(incident.last_observed_at)}{incident.resolved_at ? ` · Resolved ${date(incident.resolved_at)}` : ""}</p>
       {incident.observed_value !== null && <p className="text-sm">Observed value: {incident.observed_value}</p>}
-      {incident.notifications?.map(notification => <div key={notification.id} className="rounded border border-border p-2 text-xs space-y-1">
-        <p>WhatsApp · {notification.transition === "firing" ? "Incident opened" : "Service recovered"} · <strong>{deliveryLabels[notification.status] ?? "Status unavailable"}</strong></p>
+      {incident.notifications?.map(notification => <div key={notification.id} className="space-y-1 rounded-md border border-border bg-surface p-3 text-xs">
+        <p><MessageSquare className="mr-1.5 inline h-3 w-3 text-muted-foreground" aria-hidden="true"/>WhatsApp · {notification.transition === "firing" ? "Incident opened" : "Service recovered"} · <strong>{deliveryLabels[notification.status] ?? "Status unavailable"}</strong></p>
         <p className="text-muted-foreground">{notification.content_mode === "incident_template" ? "Incident notification with application, environment and incident reference." : "Twilio trial template — this message contains no incident details."} Updated {date(notification.updated_at)}</p>
         {notification.reason_code === "message_budget_exhausted" && <p>Notification limit reached.</p>}
       </div>)}
@@ -124,8 +125,8 @@ export function BindingAlertPolicy({ bindingId, canManage }: { bindingId: string
     } catch (caught) { setError(getErrorMessage(caught, "The alert policy could not be saved. Refresh before trying again.")); }
     finally { lock.current = false; setBusy(false); }
   }
-  return <section aria-label="Alert policy" className="space-y-3 border-t border-border pt-4">
-    <h3 className="text-sm font-semibold">Alert policy</h3>
+  return <section aria-label="Alert policy" className="space-y-3">
+    <h3 className="flex items-center gap-2 text-sm font-semibold"><Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true"/>Alert policy</h3>
     {query.isPending && <p role="status" className="text-sm">Loading alert policy…</p>}
     {query.isError && <p role="alert" className="text-sm text-destructive">Alert policy status is unavailable.</p>}
     {policy && <>

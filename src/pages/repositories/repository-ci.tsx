@@ -1,5 +1,6 @@
 import { mcpService } from "@/services/mcp.service";
 import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
+import { RepositoryWorkspaceNav } from "@/components/common/repository-workspace-nav";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -265,7 +266,6 @@ export function RepositoryCiPage() {
 
   return (
     <div className="space-y-8">
-      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Workflow}
@@ -286,6 +286,9 @@ export function RepositoryCiPage() {
           </Button>
         }
       />
+
+      <RepositoryWorkspaceNav repositoryId={id} />
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" />
 
       {pipelinesQuery.data && pipelinesQuery.data.items.length > 0 && (
         <SectionCard title="Saved CI previews" description="Previews created in CNP or by your MCP client are available here.">
@@ -634,8 +637,8 @@ export function RepositoryCiPage() {
               }
             />
           ) : preview ? (
-            <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     {adapted || preview.status === "adapted" ? "Adapted YAML" : "Generated YAML"}
@@ -710,7 +713,7 @@ export function RepositoryCiPage() {
                 ) : null}
               </div>
 
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 <Card className="p-5">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     Explanation

@@ -26,8 +26,8 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-4">
-        <div className="space-y-1">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4 space-y-0 border-b border-border/70 px-5 py-4">
+        <div className="min-w-0 space-y-1">
           <CardTitle className="text-base">{title}</CardTitle>
           {description ? (
             <CardDescription>{description}</CardDescription>
@@ -37,7 +37,7 @@ export function SectionCard({
           <div className="flex items-center gap-2">{actions}</div>
         ) : null}
       </CardHeader>
-      <CardContent className={cn("pt-0", contentClassName)}>
+      <CardContent className={cn("p-5", contentClassName)}>
         {children}
       </CardContent>
     </Card>

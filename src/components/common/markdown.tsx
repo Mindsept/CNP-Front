@@ -129,7 +129,7 @@ const components: Components = {
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "my-3 overflow-x-auto rounded-md border border-border bg-[#080a13] p-3 text-xs",
+        "my-3 overflow-x-auto rounded-md border border-border bg-background p-3 text-xs",
         className,
       )}
       {...props}
