@@ -34,8 +34,9 @@ import { projectService } from "@/services/project.service";
 import { repositoryService } from "@/services/repository.service";
 import { cloudTargetService } from "@/services/cloud-target.service";
 import { useAuth } from "@/hooks/use-auth";
+import { ProjectLandingZone } from "@/components/projects/project-landing-zone";
 
-const projectViews = ["overview", "deployments", "observability", "members"];
+const projectViews = ["overview", "landing-zone", "deployments", "observability", "members"];
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const id = projectId!;
@@ -114,6 +115,11 @@ export function ProjectDetailPage() {
           <TabsTrigger value="overview">
             <Box className="h-4 w-4" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="landing-zone">
+            <Layers2 className="h-4 w-4" />
+            Landing zone
+            <span className="text-[10px] text-muted-foreground">Preview</span>
           </TabsTrigger>
           <TabsTrigger value="deployments">
             <Rocket className="h-4 w-4" />
@@ -362,6 +368,9 @@ export function ProjectDetailPage() {
             )}
           </SectionCard>
           <ProjectDeploymentsSection projectId={id} />
+        </TabsContent>
+        <TabsContent value="landing-zone">
+          <ProjectLandingZone key={`${id}:${user?.id ?? ""}`} projectId={id} userId={user?.id ?? ""} />
         </TabsContent>
         <TabsContent value="deployments">
           <ProjectDeploymentsSection projectId={id} />
