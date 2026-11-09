@@ -20,6 +20,18 @@ describe("LoginPage", () => {
     auth.login.mockReset().mockResolvedValue(undefined);
   });
 
+  it("shows a persistent error and allows another attempt when OIDC fails", async () => {
+    auth.login.mockRejectedValueOnce(new Error("request timed out"));
+    render(<MemoryRouter><LoginPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: /continue to sign in/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Secure sign-in could not be started");
+    const button = screen.getByRole("button", { name: /continue to sign in/i });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(auth.login).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("starts OIDC without collecting a password", async () => {
     render(
       <MemoryRouter

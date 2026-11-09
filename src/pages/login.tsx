@@ -12,15 +12,18 @@ export function LoginPage() {
   const { isAuthenticated, isIdentityAuthenticated, isLoading, error, login, logout, retryProfile } = useAuth();
   const onError = useToastError();
   const [submitting, setSubmitting] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   const next = safeReturnTo(params.get("next"));
   const sessionExpired = params.get("reason") === "session-expired";
 
   async function handleLogin() {
+    setSignInError(null);
     setSubmitting(true);
     try {
       await login(next);
     } catch (err) {
+      setSignInError("Secure sign-in could not be started. Check that Keycloak is available, then try again.");
       onError(err, "Could not start the secure sign-in flow");
       setSubmitting(false);
     }
@@ -46,6 +49,7 @@ export function LoginPage() {
       </div>
 
       <div className="space-y-4">
+        {signInError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{signInError}</p>}
         {isIdentityAuthenticated && error ? (
           <div role="alert" className="space-y-3 rounded-md border p-4">
             <p>{error.message}</p>

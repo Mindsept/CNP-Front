@@ -1,5 +1,6 @@
 # Documentation CNP Front
 
+- [Refonte Graphite : fonctionnement, validation et reprise locale](graphite-design.md)
 - [Parcours MCP et écrans](mcp.md)
 - [Développement, contrats et recette](mcp-development.md)
 - [Recette observabilité : dépôt GitHub, Azure AKS et Grafana](observability-testing.md)

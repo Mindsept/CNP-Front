@@ -119,7 +119,7 @@ export function RepositoryDetailPage() {
                   }
                 />
                 <Field
-                  label="Status"
+                  label="Onboarding"
                   value={
                     <OnboardingStatusBadge status={repo.onboarding_status} />
                   }
@@ -167,7 +167,7 @@ export function RepositoryDetailPage() {
               />
               <Action
                 label="Generate CD"
-                description="Deploy to AKS via a PR."
+                description="Review delivery and observability."
                 onClick={() => navigate(`/repositories/${id}/cd`)}
                 icon={<Rocket className="h-4 w-4 text-primary" />}
               />
@@ -259,7 +259,7 @@ export function RepositoryDetailPage() {
                 {pipelines.map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between gap-3 py-3 text-sm"
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
                   >
                     <div>
                       <p className="font-mono text-xs text-muted-foreground">

@@ -33,14 +33,14 @@ export function CodeBlock({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border bg-[#080a13]",
+        "min-w-0 overflow-hidden rounded-lg border border-border bg-background",
         className,
       )}
     >
       <div className="flex items-center justify-between border-b border-border/60 bg-surface/60 px-3 py-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-block h-2 w-2 rounded-full bg-primary/70" />
-          <span className="font-mono">{filename ?? language ?? "code"}</span>
+          <span className="truncate font-mono">{filename ?? language ?? "code"}</span>
         </div>
         <Button
           size="sm"

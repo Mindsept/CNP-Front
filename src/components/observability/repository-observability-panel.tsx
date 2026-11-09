@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Activity, ExternalLink } from "lucide-react";
+import { Activity, Check, Circle, ExternalLink, ShieldCheck } from "lucide-react";
 import { SectionCard } from "@/components/common/section-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,14 +32,15 @@ function ImageSummary({ label, image, state }: { label: string; image: Observabi
 }
 function PlanSummary({ plan }: { plan: ActivationPlan }) {
   const reason = plan.selection_context?.reason;
-  return <div className="space-y-3 rounded-lg border border-border p-4">
-    {plan.intent === "enable" && <div className="grid gap-4 sm:grid-cols-2"><ImageSummary label="Currently deployed" image={plan.current_image} state={plan.current_image_state}/><ImageSummary label="Selected version" image={plan.candidate_image}/></div>}
+  return <div className="space-y-4 rounded-lg border border-border bg-background/50 p-4">
+    <p className="eyebrow">Change preview</p>
+    {plan.intent === "enable" && <div className="grid gap-4 border-b border-border pb-4 sm:grid-cols-2"><ImageSummary label="Currently deployed" image={plan.current_image} state={plan.current_image_state}/><ImageSummary label="Selected version" image={plan.candidate_image}/></div>}
     {reason === "head_ci_pending" && <p className="text-sm">The latest push is still running CI. This plan uses the most recent eligible successful build.</p>}
     {reason === "head_ci_failed" && <p className="text-sm">The latest push failed CI. This plan uses the most recent eligible successful build.</p>}
     {reason === "head_build_ineligible" && <p className="text-sm">The latest push has no eligible image. This plan uses the most recent verified build.</p>}
     {plan.restart_required && <p className="text-sm font-medium">This change restarts the application{plan.application_rollouts === 2 ? " in two rollouts" : ""}.</p>}
     {plan.collection_interruption_expected && <p className="text-sm">Telemetry collection will be interrupted during this change.</p>}
-    {plan.effects.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm">{plan.effects.map(effect => <li key={effect.code}>{effect.description}</li>)}</ul>}
+    {plan.effects.length > 0 && <ul className="space-y-2 text-xs text-muted-foreground">{plan.effects.map(effect => <li className="flex items-start gap-2" key={effect.code}><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true"/>{effect.description}</li>)}</ul>}
     {plan.blockers.map(blocker => <p key={blocker.code} className="text-sm text-muted-foreground">{blocker.message}</p>)}
     {plan.status === "no_change" && <p className="text-sm">Configuration is up to date. No operation is needed.</p>}
   </div>;
@@ -50,10 +51,15 @@ function OperationSummary({ operation }: { operation: ObservabilityOperation }) 
     : Boolean(operation.evidence.disable_verified_at));
   const status = operation.status === "failed" ? "Operation failed" : operation.status === "superseded" ? "Replaced by a newer decision" :
     operation.status === "succeeded" ? (verified ? "Operation completed" : "Completion could not be verified") : stages[operation.stage] ?? "Unknown operation status";
-  return <div className="space-y-2 rounded-lg border border-border p-4">
-    <p role="status" aria-live="polite" className="font-medium">{status}</p>
+  const deploymentVerified = operation.evidence.verified_revision === operation.desired_revision && Boolean(operation.evidence.deployment_verified_at);
+  return <div className="space-y-3 rounded-lg border border-border bg-background/50 p-4">
+    <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true"/><p role="status" aria-live="polite" className="font-medium">{status}</p></div>
     <p className="text-xs text-muted-foreground">Attempt {operation.attempt_number} · Started {date(operation.created_at)} · Updated {date(operation.updated_at)}</p>
     {operation.image && <ImageSummary label="Authorized version" image={operation.image}/>}
+    {operation.intent === "enable" && <div className="grid gap-2 border-y border-border py-3 text-xs sm:grid-cols-2" aria-label="Verification evidence">
+      <div className="flex items-center gap-2">{deploymentVerified ? <Check className="h-3.5 w-3.5 text-success"/> : <Circle className="h-3.5 w-3.5 text-muted-foreground"/>}<span>{deploymentVerified ? "Deployed image verified" : "Deployed image not yet verified"}</span></div>
+      <div className="flex items-center gap-2">{verified ? <Check className="h-3.5 w-3.5 text-success"/> : <Circle className="h-3.5 w-3.5 text-muted-foreground"/>}<span>{verified ? "Telemetry verified" : "Telemetry not yet verified"}</span></div>
+    </div>}
     {operation.collection_interruption_expected && <p className="text-sm">Collection interruption was included in this change.</p>}
     {operation.stage === "reconciling_external_effect" && <p className="text-sm">CNP is checking the original external action. Starting another deployment is blocked until its result is known.</p>}
     {operation.stage_deadline_at && <p className="text-xs text-muted-foreground">Stage deadline: {date(operation.stage_deadline_at)}</p>}
@@ -101,14 +107,15 @@ function ScopedPanel({ scope, initialOperationId, onOperation }: { scope: Activa
     try { await openBindingGrafana(data.binding_id, destination); }
     catch (error) { setGrafanaError(getErrorMessage(error, "Grafana could not be opened. Try again.")); }
   }
-  return <div className="space-y-4">
-    <p className="break-words text-sm font-medium">{scope.serviceKey}{data ? ` · ${data.scope.environment}` : ""}</p>
-    <p className="break-all text-xs text-muted-foreground">Target: {scope.targetId}</p>
+  return <div className={data?.binding_id ? "grid items-start gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,1fr)]" : ""}>
+    <div className="min-w-0 space-y-4">
+    <div className="flex flex-wrap items-center gap-2"><p className="break-all font-mono text-sm font-medium">{scope.serviceKey}</p>{data && <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">{data.scope.environment}</span>}</div>
+    <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Deployment target</summary><p className="mt-1 break-all font-mono">{scope.targetId}</p></details>
     {checkGithub && <GithubPermissionsNotice data={github.data} pending={github.isPending} error={github.isError} onRetry={() => void github.refetch()}/>}
     {state.context.isPending && <p role="status" className="text-sm text-muted-foreground">Checking permissions and observability status…</p>}
     {(!contextFresh && !state.context.isPending) && <p role="alert" className="text-sm text-destructive">Current observability status is unavailable. Any displayed values are the last known state.</p>}
     {data && <>
-      <div className="flex flex-wrap items-center gap-3"><span className="text-sm">Telemetry</span><ObservabilityStatusBadge status={contextFresh ? data.health.status : "unknown"}/><span className="text-xs text-muted-foreground">Last verified: {date(data.health.last_verified_at)}</span></div>
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background/50 px-3 py-3"><span className="text-sm">Telemetry</span><ObservabilityStatusBadge status={contextFresh ? data.health.status : "unknown"}/><span className="text-xs text-muted-foreground">Last verified: {date(data.health.last_verified_at)}</span></div>
       <p className="text-sm">Application: {({ ready: "Ready", not_ready: "Not ready", not_deployed: "Not deployed", unknown: "Unknown" })[data.application_status] ?? "Unknown"}. Last observed: {date(data.health.observed_at)}.</p>
       {data.health.status === "degraded" && <p className="text-sm">Telemetry checks are degraded. Historical data may still be available in Grafana. Refresh status to check again.</p>}
       {data.health.status === "unknown" && <p className="text-sm">Telemetry has not been verified for this configuration.</p>}
@@ -139,7 +146,8 @@ function ScopedPanel({ scope, initialOperationId, onOperation }: { scope: Activa
     {state.error && <p role="alert" className="text-sm text-destructive">{state.error}</p>}
     {grafanaError && <p role="alert" className="text-sm text-destructive">{grafanaError}</p>}
     <Button size="sm" variant="link" disabled={state.context.isFetching} onClick={state.refreshStatus}>Refresh observability status</Button>
-    {data?.binding_id && <><BindingAlertPolicy key={data.binding_id} bindingId={data.binding_id} canManage={state.canManage && contextFresh}/><ObservabilityIncidents projectId={scope.projectId} bindingId={data.binding_id} canManage={state.canManage && contextFresh}/></>}
+    </div>
+    {data?.binding_id && <aside className="min-w-0 space-y-6 border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0" aria-label="Application alerts"><BindingAlertPolicy key={data.binding_id} bindingId={data.binding_id} canManage={state.canManage && contextFresh}/><ObservabilityIncidents projectId={scope.projectId} bindingId={data.binding_id} canManage={state.canManage && contextFresh}/></aside>}
   </div>;
 }
 

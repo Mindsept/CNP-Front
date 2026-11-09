@@ -1,6 +1,7 @@
 import { RepositoryObservabilityPanel } from "@/components/observability/repository-observability-panel";
 import { mcpService } from "@/services/mcp.service";
 import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
+import { RepositoryWorkspaceNav } from "@/components/common/repository-workspace-nav";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -372,7 +373,6 @@ export function RepositoryCdPage() {
 
   return (
     <div className="space-y-8">
-      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" />
       <PageHeader
         eyebrow={repoQuery.data?.full_name ?? "Repository"}
         icon={Rocket}
@@ -394,7 +394,9 @@ export function RepositoryCdPage() {
         }
       />
 
+      <RepositoryWorkspaceNav repositoryId={id} />
       <RepositoryObservabilityPanel key={`${id}:${preview?.cd_pipeline_id ?? "none"}`} projectId={projectId} repositoryId={id} pipeline={preview} />
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" />
 
       {unsupportedReviewedTarget && (
         <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
