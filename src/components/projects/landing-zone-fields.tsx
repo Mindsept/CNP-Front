@@ -44,10 +44,6 @@ export function LandingZoneFields({
         <span className="text-sm font-semibold">Landing zone</span>
         <Badge variant="muted">Preview</Badge>
       </div>
-      <p className="col-span-full text-sm text-muted-foreground">
-        Explore a project setup. These choices are simulated; real demo
-        deployments use Azure AKS.
-      </p>
       <fieldset disabled={disabled} className="space-y-2">
         <legend className="mb-2 text-sm font-medium">Application type</legend>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -98,7 +94,6 @@ export function LandingZoneFields({
           id={`${id}-sla`}
           value={value.availability}
           disabled={disabled}
-          aria-describedby={`${id}-sla-help`}
           onChange={(event) =>
             onChange({
               ...value,
@@ -114,13 +109,6 @@ export function LandingZoneFields({
             </option>
           ))}
         </select>
-        <p
-          id={`${id}-sla-help`}
-          className="text-xs leading-5 text-muted-foreground"
-        >
-          Demo scenarios, not a guaranteed SLA. Targets represent clusters, not
-          worker nodes.
-        </p>
       </div>
 
       <div
@@ -131,7 +119,7 @@ export function LandingZoneFields({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-medium">{profile.name} landing zone</p>
           <span className="text-xs text-muted-foreground">
-            {availability.targets.length} simulated{" "}
+            {availability.targets.length}{" "}
             {availability.targets.length === 1 ? "target" : "targets"}
           </span>
         </div>
@@ -157,11 +145,6 @@ export function LandingZoneFields({
             </Badge>
           ))}
         </div>
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">
-          Demo execution target:{" "}
-          <strong className="font-medium text-foreground">Azure · AKS</strong>.
-          This preview creates no cloud resources.
-        </p>
       </div>
 
       {value.applicationType === "ai" && (

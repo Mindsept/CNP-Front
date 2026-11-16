@@ -288,7 +288,7 @@ export function RepositoryCiPage() {
       />
 
       <RepositoryWorkspaceNav repositoryId={id} />
-      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" />
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.ci_pipeline_id} kind="ci" hasPublishedPr={Boolean(preview?.pull_request_number)} />
 
       {pipelinesQuery.data && pipelinesQuery.data.items.length > 0 && (
         <SectionCard title="Saved CI previews" description="Previews created in CNP or by your MCP client are available here.">

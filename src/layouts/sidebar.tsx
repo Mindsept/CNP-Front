@@ -67,12 +67,6 @@ export function Sidebar({
       >
         <Brand />
       </NavLink>
-      <div className="mx-5 mb-6 rounded-md border border-border bg-background/40 px-3 py-2.5">
-        <p className="text-xs font-medium">Developer workspace</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Build. Deploy. Observe.
-        </p>
-      </div>
       <nav
         aria-label={mobile ? "Mobile navigation" : "Main navigation"}
         className="min-h-0 flex-1 space-y-7 overflow-y-auto px-3"

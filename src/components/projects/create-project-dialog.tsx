@@ -174,10 +174,6 @@ export function CreateProjectDialog({
                 onChange={setPreview}
                 disabled={mutation.isPending}
               />
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                The project is created in CNP. Its landing zone preview is saved
-                only for your account in this browser.
-              </p>
             </div>
           </fieldset>
 

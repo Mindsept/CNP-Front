@@ -17,8 +17,8 @@ describe("OIDC callbacks", () => {
       state: { returnTo: "/projects/42?tab=settings" },
     } as User);
 
-    expect(window.location.pathname).toBe("/projects/42");
-    expect(window.location.search).toBe("?tab=settings");
+    expect(window.location.pathname).toBe("/auth/arrival");
+    expect(new URLSearchParams(window.location.search).get("next")).toBe("/projects/42?tab=settings");
     expect(window.location.search).not.toContain("code=");
     expect(window.location.search).not.toContain("state=");
   });

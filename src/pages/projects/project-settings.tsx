@@ -1,4 +1,6 @@
 import { McpPolicySettings } from "@/components/mcp/policy-settings";
+import { DeleteProject } from "@/components/projects/delete-project";
+import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +44,7 @@ function initials(email: string): string {
 export function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const id = projectId!;
+  const { user } = useAuth();
   const qc = useQueryClient();
   const onError = useToastError();
 
@@ -213,6 +216,9 @@ export function ProjectSettingsPage() {
           </ul>
         </SectionCard>
       </div>
+      {(user?.role === "admin" || project.members?.some(member => member.user_id === user?.id && member.role === "owner")) && (
+        <DeleteProject key={id} id={id} name={project.name} />
+      )}
     </div>
   );
 }

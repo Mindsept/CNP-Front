@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 
 import { router } from "@/routes/router";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ArrivalTransitionProvider } from "@/components/auth/arrival-transition";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -31,7 +32,7 @@ export default function App() {
   return (
     <QueryClientProvider client={client}>
       <TooltipProvider delayDuration={150}>
-        <RouterProvider router={router} />
+        <ArrivalTransitionProvider><RouterProvider router={router} /></ArrivalTransitionProvider>
         <Toaster
           position="bottom-right"
           theme="dark"

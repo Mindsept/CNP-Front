@@ -3,7 +3,7 @@ import { getReturnToFromState } from "@/auth/navigation";
 
 export function handleSigninCallback(user: User | undefined): void {
   const returnTo = getReturnToFromState(user?.state);
-  window.history.replaceState({}, document.title, returnTo);
+  window.history.replaceState({}, document.title, `/auth/arrival?next=${encodeURIComponent(returnTo)}`);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 

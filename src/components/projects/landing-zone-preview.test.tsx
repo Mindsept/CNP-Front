@@ -131,21 +131,20 @@ describe("Landing zone preview boundaries", () => {
     expect(projectService.create).toHaveBeenCalledTimes(1);
   });
 
-  it("shows one, two and three simulated targets while retaining Azure for demo execution", () => {
+  it("shows the target count and cluster badges for each SLA", () => {
     render(<ProjectLandingZone projectId="p" userId="u" />);
-    expect(screen.getByText("1 simulated target")).toBeInTheDocument();
+    expect(screen.getByText("1 target")).toBeInTheDocument();
+    expect(screen.getByText("Azure · AKS")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Requested SLA"), {
       target: { value: "99.9" },
     });
-    expect(screen.getByText("2 simulated targets")).toBeInTheDocument();
+    expect(screen.getByText("2 targets")).toBeInTheDocument();
     expect(screen.getByText("AWS · EKS")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Requested SLA"), {
       target: { value: "99.99" },
     });
     expect(screen.getByText("Private · k3s")).toBeInTheDocument();
-    expect(screen.getByText(/Demo execution target:/)).toHaveTextContent(
-      "Azure · AKS",
-    );
+    expect(screen.getByText("3 targets")).toBeInTheDocument();
     expect(projectService.create).not.toHaveBeenCalled();
   });
 

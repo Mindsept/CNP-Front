@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import { getValidAccessToken } from "@/auth/oidc-client";
 import { env } from "@/config/env";
-import type { Action, ActionType, Challenge, Connection, GithubDeploymentPermissions, McpPolicy, RunProgress } from "@/types/mcp";
+import type { Action, ActionType, Challenge, Connection, GithubDeploymentPermissions, McpPolicy, PullRequestStatus, RunProgress } from "@/types/mcp";
 
 let browserSession: { token: string; csrf: string } | null = null;
 let pending: { token: string; promise: Promise<string> } | null = null;
@@ -40,6 +40,8 @@ export const mcpService = {
   },
   consent: (body: Record<string, unknown>) => browserPost<{ redirect_url: string }>(`${env.apiBaseUrl.replace(/\/api\/v1\/?$/, "")}/oauth/consent`, body),
   action: (id: string) => api.get<Action>(`/actions/${id}`),
+  pullRequestStatus: (repositoryId: string, kind: "ci" | "cd", pipelineId: string, signal?: AbortSignal) =>
+    api.get<PullRequestStatus>(`/pull-requests/${repositoryId}/${kind}/${pipelineId}`, { signal }),
   reviews: (offset = 0) => api.get<{ items: Action[]; next_offset: number | null }>(`/reviews?offset=${offset}`),
   pipelineActions: (repositoryId: string, pipelineId: string, offset = 0) =>
     api.get<{ items: Action[]; next_offset: number | null }>(`/repositories/${repositoryId}/actions?pipeline_id=${encodeURIComponent(pipelineId)}&offset=${offset}`),

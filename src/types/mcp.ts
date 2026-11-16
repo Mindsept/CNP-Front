@@ -1,4 +1,14 @@
 export type ActionType = "secret_sync" | "ci_pr" | "cd_pr" | "pr_merge" | "deployment";
+export interface PullRequestStatus {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  merged: boolean;
+  mergeable: boolean | null;
+  check_count: number;
+  checks: { name: string; status: string; conclusion: string | null }[];
+  status_checks: { context: string; state: string }[];
+}
 export interface Action {
   id: string; run_id: string | null; type: ActionType; status: string; fingerprint: string;
   snapshot: { repository: string; base_sha: string; environment: string; namespace?: string; image?: string; target_id?: string;

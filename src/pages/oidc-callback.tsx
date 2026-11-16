@@ -2,6 +2,8 @@ import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/common/loading-state";
 import { useAuth } from "@/hooks/use-auth";
+import { SpaceBackground } from "@/components/auth/space-background";
+import { Brand } from "@/components/common/brand";
 
 export function OidcCallbackPage() {
   const { error, isAuthenticated, isLoading, login } = useAuth();
@@ -23,12 +25,14 @@ export function OidcCallbackPage() {
   }
 
   if (!isLoading && isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/auth/arrival" replace />;
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
-      <LoadingState rows={2} className="w-full max-w-md" />
+    <div className="cnp-login-shell">
+      <SpaceBackground />
+      <header className="cnp-login-brand"><Brand size="lg" /></header>
+      <main className="cnp-login-main"><p role="status" className="text-sm text-muted-foreground">Connecting to your workspace…</p></main>
     </div>
   );
 }

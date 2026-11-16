@@ -396,7 +396,7 @@ export function RepositoryCdPage() {
 
       <RepositoryWorkspaceNav repositoryId={id} />
       <RepositoryObservabilityPanel key={`${id}:${preview?.cd_pipeline_id ?? "none"}`} projectId={projectId} repositoryId={id} pipeline={preview} />
-      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" />
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" hasPublishedPr={pipelinesQuery.data?.items.some(p => p.id === preview?.cd_pipeline_id && Boolean(p.pull_request_url))} />
 
       {unsupportedReviewedTarget && (
         <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
