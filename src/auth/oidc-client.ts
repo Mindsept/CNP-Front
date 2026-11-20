@@ -19,6 +19,8 @@ export const oidcSettings: UserManagerSettings = {
   automaticSilentRenew: true,
   monitorSession: true,
   loadUserInfo: false,
+  // Fail visibly if the identity provider is unreachable instead of waiting indefinitely.
+  requestTimeoutInSeconds: 15,
   userStore: new WebStorageStateStore({ store: window.sessionStorage }),
   stateStore: new WebStorageStateStore({ store: window.sessionStorage }),
 };

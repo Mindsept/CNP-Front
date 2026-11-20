@@ -1,0 +1,25 @@
+.cnp-space { position: fixed; inset: 0; overflow: hidden; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, #1c3041 0%, #0b1119 45%, #07090d 100%); }
+.cnp-space-galaxy, .cnp-space-tunnel, .cnp-space-shade { position: absolute; inset: 0; }
+.cnp-space-galaxy { transition: opacity 1200ms ease; }
+.cnp-space-travel .cnp-space-galaxy { opacity: 0; }
+.cnp-space-tunnel { animation: cnp-tunnel-in 1400ms ease both; }
+.cnp-space canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.cnp-space-galaxy > div, .cnp-space-tunnel > div { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.cnp-space-shade { background: radial-gradient(ellipse at center, transparent 15%, #07090d55 100%); }
+.cnp-login-shell { position: relative; isolation: isolate; min-height: 100dvh; display: flex; flex-direction: column; background: #07090d; color: #edf1f5; }
+.cnp-login-brand { position: relative; z-index: 1; padding: 32px 40px; }
+.cnp-login-main { position: relative; z-index: 1; flex: 1; display: grid; place-items: center; padding: 24px 20px 72px; }
+.cnp-login-card { width: 100%; max-width: 440px; border: 1px solid #9fcbdc30; border-radius: 20px; padding: 40px; background: #111820eb; box-shadow: 0 24px 90px #0008, inset 0 1px 0 #ffffff0d; backdrop-filter: blur(20px); }
+.cnp-login-footer { position: relative; z-index: 1; padding: 20px; text-align: center; color: #aab8c5; font-size: 12px; letter-spacing: .04em; }
+.cnp-arrival-card { transition: opacity 500ms ease, transform 700ms ease, filter 500ms ease; text-align: center; }
+.cnp-arrival-card.is-leaving { opacity: 0; transform: scale(.94) translateY(-12px); filter: blur(6px); pointer-events: none; }
+.cnp-skip-intro { position: fixed; z-index: 3; right: 24px; bottom: 24px; }
+.cnp-arrival-overlay { position: fixed; z-index: 100; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: #07090d; color: #edf1f5; opacity: 1; }
+.cnp-arrival-reveal { opacity: 0; transition: opacity 1600ms cubic-bezier(.4,0,.2,1); }
+.cnp-destination { min-height: 100dvh; transform-origin: 50% 50vh; }
+.cnp-destination-welcome, .cnp-destination-travel { opacity: 0; transform: scale(.88); }
+.cnp-destination-reveal { opacity: 1; transform: scale(1); transition: opacity 1600ms cubic-bezier(.4,0,.2,1), transform 1600ms cubic-bezier(.4,0,.2,1); }
+.cnp-destination-idle { opacity: 1; transform: none; }
+@keyframes cnp-tunnel-in { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
+@media(max-width: 600px) { .cnp-login-brand { padding: 24px; } .cnp-login-card { padding: 28px 24px; } .cnp-login-main { padding-bottom: 32px; } }
+@media(prefers-reduced-motion: reduce) { .cnp-space-galaxy, .cnp-space-tunnel { display: none; } .cnp-arrival-card, .cnp-space-galaxy, .cnp-destination, .cnp-arrival-overlay { transition: none; } }

@@ -96,13 +96,13 @@ src/
 
 ## Theme
 
-The UI is a premium dark theme on a near-black background (`#050711`) with
-violet (`#8B5CF6`) and blue (`#38BDF8`) accents. Surfaces use subtle glass
-effects and tasteful shadows — no cheap gradients, no random emojis, no
-placeholder copy.
+The Graphite theme uses matte charcoal surfaces, an ice-blue action accent,
+IBM Plex Sans and monospace technical identifiers. Shared components apply
+the same tokens to projects, delivery, observability and review screens.
+The CNP mark is a lightweight layers icon with a text wordmark.
 
-The logo at `/public/logo.png` is reused on the login page, sidebar and
-favicon. If the file is missing, the UI falls back to a `CNP` text mark.
+See [Graphite design and validation](docs/graphite-design.md) for the scope,
+local startup instructions and the matching Keycloak theme.
 
 ---
 

@@ -8,8 +8,9 @@ import { api } from "@/lib/api";
 import { mcpService } from "@/services/mcp.service";
 import { useToastError } from "@/hooks/use-toast-error";
 import type { Action, ActionType } from "@/types/mcp";
+import { PullRequestChecks, pullRequestChecks } from "./pull-request-checks";
 
-export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, kind }: { projectId?: string; repositoryId: string; pipelineId?: string; kind: "ci" | "cd" }) {
+export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, kind, hasPublishedPr }: { projectId?: string; repositoryId: string; pipelineId?: string; kind: "ci" | "cd"; hasPublishedPr?: boolean }) {
   const error = useToastError();
   const policy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
   const [action, setAction] = useState<Action | null>(null);
@@ -24,6 +25,15 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
     refetchInterval: 5000,
   });
   useEffect(() => { setAction(null); setOffset(0); }, [repositoryId, pipelineId]);
+  const publicationType = kind === "ci" ? "ci_pr" : "cd_pr";
+  const published = hasPublishedPr || actionsQuery.data?.items.some(item => item.type === publicationType && item.status === "succeeded");
+  const checksQuery = useQuery({
+    queryKey: ["pr-checks", repositoryId, kind, pipelineId],
+    queryFn: ({ signal }) => mcpService.pullRequestStatus(repositoryId, kind, pipelineId!, signal),
+    enabled: Boolean(policy.data?.enabled && pipelineId && published),
+    refetchInterval: query => query.state.data?.state === "closed" ? false : 10000,
+    retry: 1,
+  });
   if (!policy.data?.enabled) return null;
   async function prepare(type: ActionType) {
     if (!pipelineId) return;
@@ -37,7 +47,7 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
   const rows = actionsQuery.data?.items ?? [];
   const actions = action && !rows.some(a => a.id === action.id) ? [action, ...rows] : rows;
   const blocked = !pipelineId || busy || actionsQuery.isPending || actionsQuery.isError;
-  const publicationType = kind === "ci" ? "ci_pr" : "cd_pr";
+  const mergeReady = published && !checksQuery.isError && checksQuery.data && pullRequestChecks(checksQuery.data).mergeReady;
   const activePublication = actions.some(a => a.type === publicationType && ["prepared", "awaiting_review", "approved", "queued", "running"].includes(a.status));
   return <SectionCard title="Human-reviewed operations" description="Open an existing action to examine its changes and make your decision."><p className="mb-4">Publication requires a human review. Preparing or reopening an action does not approve it.</p>
     {!pipelineId && <p className="mb-4 text-muted-foreground">Select or generate a saved preview first.</p>}
@@ -53,6 +63,9 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
       <Button variant="outline" disabled={actionsQuery.data.next_offset === null} onClick={() => setOffset(actionsQuery.data!.next_offset!)}>Next actions</Button>
     </div>}
     {kind === "cd" && <div className="mb-4 space-y-3"><label>Successful CI merge action ID<Input value={mergeId} onChange={e => setMergeId(e.target.value)} /></label><Button disabled={busy || !mergeId} variant="outline" onClick={() => void resolve()}>Resolve verified image</Button>{image && <p className="break-all">Use this digest in the image field: {image}</p>}</div>}
-    <div className="flex flex-wrap gap-3"><Button disabled={blocked} variant="outline" onClick={() => void prepare("secret_sync")}>Prepare secret synchronization</Button><Button disabled={blocked || activePublication} onClick={() => void prepare(publicationType)}>Prepare PR publication</Button><Button disabled={blocked} variant="outline" onClick={() => void prepare("pr_merge")}>Prepare PR merge</Button>{kind === "cd" && <Button disabled={blocked} variant="outline" onClick={() => void prepare("deployment")}>Prepare deployment</Button>}</div>
+    {published && checksQuery.isPending && <p role="status" className="mb-4 text-sm text-muted-foreground">Loading GitHub checks…</p>}
+    {published && checksQuery.isError && <p role="alert" className="mb-4 text-sm">Could not refresh GitHub checks. <Button variant="outline" onClick={() => void checksQuery.refetch()}>Retry</Button></p>}
+    {published && checksQuery.data && <PullRequestChecks pr={checksQuery.data} />}
+    <div className="flex flex-wrap gap-3"><Button disabled={blocked} variant="outline" onClick={() => void prepare("secret_sync")}>Prepare secret synchronization</Button><Button disabled={blocked || activePublication} onClick={() => void prepare(publicationType)}>Prepare PR publication</Button><Button disabled={blocked || !mergeReady} variant="outline" onClick={() => void prepare("pr_merge")}>Prepare PR merge</Button>{kind === "cd" && <Button disabled={blocked} variant="outline" onClick={() => void prepare("deployment")}>Prepare deployment</Button>}</div>
     </SectionCard>;
 }

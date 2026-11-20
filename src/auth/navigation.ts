@@ -9,6 +9,8 @@ export function safeReturnTo(value: unknown): string {
     value.startsWith("//") ||
     value.includes("\\") ||
     [...value].some((character) => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127) ||
+    value.startsWith("/auth/arrival") ||
+    value.startsWith("/login") ||
     value.startsWith("/auth/callback") ||
     value.startsWith("/auth/logout/callback")
   ) {

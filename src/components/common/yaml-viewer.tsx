@@ -21,7 +21,7 @@ const cnpTheme: PrismTheme = {
   styles: [
     {
       types: ["comment", "prolog", "doctype", "cdata"],
-      style: { color: "#64748B", fontStyle: "italic" },
+      style: { color: "#9DA5AA", fontStyle: "italic" },
     },
     {
       types: ["punctuation"],
@@ -29,27 +29,27 @@ const cnpTheme: PrismTheme = {
     },
     {
       types: ["property", "tag", "boolean", "number", "constant", "symbol"],
-      style: { color: "#A78BFA" },
+      style: { color: "#9FCBDC" },
     },
     {
       types: ["selector", "attr-name", "string", "char", "builtin"],
-      style: { color: "#38BDF8" },
+      style: { color: "#93C8AD" },
     },
     {
       types: ["operator", "entity", "url", "variable"],
-      style: { color: "#C4B5FD" },
+      style: { color: "#E5BF7A" },
     },
     {
       types: ["atrule", "attr-value", "keyword"],
-      style: { color: "#8B5CF6" },
+      style: { color: "#9FCBDC" },
     },
     {
       types: ["function", "class-name"],
-      style: { color: "#34D399" },
+      style: { color: "#93C8AD" },
     },
     {
       types: ["regex", "important"],
-      style: { color: "#FBBF24" },
+      style: { color: "#E5BF7A" },
     },
     {
       types: ["important", "bold"],
@@ -61,16 +61,16 @@ const cnpTheme: PrismTheme = {
     },
     {
       types: ["deleted"],
-      style: { color: "#F87171" },
+      style: { color: "#F29186" },
     },
     {
       types: ["inserted"],
-      style: { color: "#34D399" },
+      style: { color: "#93C8AD" },
     },
     // YAML-specific anchors
     {
       types: ["key"],
-      style: { color: "#A78BFA", fontWeight: "500" },
+      style: { color: "#9FCBDC", fontWeight: "500" },
     },
     {
       types: ["scalar"],
@@ -101,14 +101,14 @@ export function YamlViewer({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border bg-[#080a13]",
+        "min-w-0 overflow-hidden rounded-lg border border-border bg-background",
         className,
       )}
     >
       <div className="flex items-center justify-between border-b border-border/60 bg-surface/60 px-3 py-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-block h-2 w-2 rounded-full bg-primary/70" />
-          <span className="font-mono">{filename}</span>
+          <span className="truncate font-mono">{filename}</span>
         </div>
         <Button
           size="sm"

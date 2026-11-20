@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 
@@ -12,19 +12,35 @@ export function LoginPage() {
   const { isAuthenticated, isIdentityAuthenticated, isLoading, error, login, logout, retryProfile } = useAuth();
   const onError = useToastError();
   const [submitting, setSubmitting] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   const next = safeReturnTo(params.get("next"));
   const sessionExpired = params.get("reason") === "session-expired";
+  const started = useRef(false);
+  const visibleSignInError = signInError ?? (!submitting && !isIdentityAuthenticated && error
+    ? "Secure sign-in could not be started. Check that Keycloak is available, then try again."
+    : null);
 
-  async function handleLogin() {
+  const handleLogin = useCallback(async () => {
+    setSignInError(null);
     setSubmitting(true);
     try {
       await login(next);
     } catch (err) {
+      setSignInError("Secure sign-in could not be started. Check that Keycloak is available, then try again.");
       onError(err, "Could not start the secure sign-in flow");
+    } finally {
+      // react-oidc-context exposes navigation failures through its error state
+      // and resolves the promise, so catch alone cannot release this button.
       setSubmitting(false);
     }
-  }
+  }, [login, next, onError]);
+
+  useEffect(() => {
+    if (started.current || isLoading || isAuthenticated || isIdentityAuthenticated || sessionExpired) return;
+    started.current = true;
+    void handleLogin();
+  }, [isLoading, isAuthenticated, isIdentityAuthenticated, sessionExpired, handleLogin]);
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to={next} replace />;
@@ -37,15 +53,15 @@ export function LoginPage() {
           Sign in
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome to your platform
+          Your workspace awaits.
         </h1>
         <p className="text-sm text-muted-foreground">
-          Continue to the CNP identity provider. Keycloak handles your password
-          and authenticator code securely.
+          One place for your code, deployments and observability.
         </p>
       </div>
 
       <div className="space-y-4">
+        {visibleSignInError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{visibleSignInError}</p>}
         {isIdentityAuthenticated && error ? (
           <div role="alert" className="space-y-3 rounded-md border p-4">
             <p>{error.message}</p>
@@ -62,10 +78,9 @@ export function LoginPage() {
         <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/50 p-4">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="space-y-1">
-            <p className="text-sm font-medium">Secure sign-in with Keycloak</p>
+            <p className="text-sm font-medium">Your CNP account</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              You will be redirected for username or email, password and MFA.
-              CNP never receives your password or TOTP secret.
+              Opening your secure login. Use your username, password and authenticator to continue.
             </p>
           </div>
         </div>
@@ -77,7 +92,7 @@ export function LoginPage() {
           size="lg"
           onClick={() => void handleLogin()}
         >
-          Continue to sign in
+          Sign in with Keycloak
           {!submitting ? <ArrowRight className="h-4 w-4" /> : null}
         </Button>
       </div>

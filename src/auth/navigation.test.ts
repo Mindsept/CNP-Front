@@ -17,6 +17,8 @@ describe("OIDC return navigation", () => {
     ["/\\attacker.example", "/"],
     ["/\n/attacker.example", "/"],
     ["/auth/callback?code=leak", "/"],
+    ["/auth/arrival?next=/auth/arrival", "/"],
+    ["/login?next=/login", "/"],
     [undefined, "/"],
   ])("rejects unsafe return target %s", (value, expected) => {
     expect(safeReturnTo(value)).toBe(expected);

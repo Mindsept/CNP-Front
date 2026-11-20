@@ -2,23 +2,24 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="icon" type="image/svg+xml" href="/graphite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#050711" />
+    <meta name="theme-color" content="#131517" />
+    <meta name="color-scheme" content="dark" />
+    <style>
+      html, body, #root { margin: 0; min-height: 100%; background: #07090d; color: #edf1f5; color-scheme: dark; }
+      .cnp-boot { min-height: 100dvh; display: grid; place-items: center; font: 14px system-ui, sans-serif; background: radial-gradient(ellipse at center, #1c3041, #07090d 75%); }
+      .cnp-boot span { color: #9fcbdc; letter-spacing: .12em; }
+    </style>
     <meta
       name="description"
       content="Cloud Native Platform — onboard repositories, generate CI workflows, and ship to production."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    />
+    <link rel="stylesheet" href="/fonts/plex.css" />
     <title>Cloud Native Platform</title>
   </head>
   <body class="bg-background text-foreground antialiased">
-    <div id="root"></div>
+    <div id="root"><div class="cnp-boot" role="status"><span>CNP · Connecting to your workspace…</span></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
