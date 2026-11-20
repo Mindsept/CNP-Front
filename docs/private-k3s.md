@@ -54,5 +54,6 @@ API ; aucun tool privé n'est ajouté.
 Les tests couvrent parseur et preview privée en complément des reviews. Lancer
 `npm test`, `npm run build` et `npm run lint`. Sous Node 25 avec Web Storage
 expérimental, utiliser `NODE_OPTIONS=--no-experimental-webstorage npm test` pour
-jsdom. La recette réelle GCP/GitHub/ACME est documentée côté API et IaC et reste
-à effectuer avec les comptes de l'équipe.
+jsdom. Le premier déploiement réel GCP/GitHub/ACME est documenté côté API et IaC.
+La promotion d'un nouveau digest, le renouvellement de l'observer, le redémarrage
+de la VM et le parcours entre plusieurs projets restent à qualifier.

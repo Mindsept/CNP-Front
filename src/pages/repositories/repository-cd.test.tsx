@@ -105,6 +105,18 @@ describe("CD integration across MCP and database provisioning", () => {
       cloud_target_id: "target", kubeconfig_strategy: "azure_cli", include_image_pull_secret: false,
     })));
   });
+  it("does not offer private ServiceAccount credentials for legacy Azure targets", async () => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true, value: vi.fn(),
+    });
+    vi.mocked(cdService.requirements).mockResolvedValue(requirements("azure"));
+    renderPage();
+    await screen.findByText("Kubeconfig strategy");
+    const trigger = screen.getByText("secret (KUBECONFIG_CONTENT)").closest("button")!;
+    fireEvent.click(trigger);
+    expect(await screen.findByRole("option", { name: "azure_cli (az get-credentials)" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Project ServiceAccount" })).not.toBeInTheDocument();
+  });
   it("uses the project ServiceAccount and ClusterIP for reviewed private targets", async () => {
     vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
     vi.mocked(cdService.requirements).mockResolvedValue(requirements("private"));

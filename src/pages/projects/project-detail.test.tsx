@@ -40,6 +40,12 @@ vi.mock("@/services/cloud-target.service", () => ({
 vi.mock("@/components/cd/project-deployments-section", () => ({
   ProjectDeploymentsSection: () => <div>Deployment history</div>,
 }));
+vi.mock("@/components/cd/project-sla-section", () => ({
+  ProjectSlaSection: () => <div>Deployment SLA</div>,
+}));
+vi.mock("@/components/cd/project-traffic-section", () => ({
+  ProjectTrafficSection: () => <div>Application traffic</div>,
+}));
 vi.mock("@/components/observability/project-observability-card", () => ({
   ProjectObservabilityCard: () => <div>Project telemetry</div>,
 }));
@@ -86,5 +92,12 @@ describe("Project workspace", () => {
       screen.queryByRole("link", { name: "Azure databases" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Configured")).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Deployments" }), {
+      button: 0, ctrlKey: false,
+    });
+    expect(await screen.findByText("Deployment history")).toBeInTheDocument();
+    expect(screen.getByText("Deployment SLA")).toBeInTheDocument();
+    expect(screen.getByText("Application traffic")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "PostgreSQL databases" })).not.toBeInTheDocument();
   });
 });

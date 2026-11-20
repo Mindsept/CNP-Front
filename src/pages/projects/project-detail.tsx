@@ -347,22 +347,12 @@ export function ProjectDetailPage() {
             {canProvision && (
               <div className="mt-4 flex flex-wrap gap-3">
                 {targets.some(
-                  (t) => t.provider === "azure" && t.cluster_type === "aks",
+                  (t) => (t.provider === "azure" && t.cluster_type === "aks") || (t.provider === "aws" && t.cluster_type === "eks"),
                 ) && (
                   <Button asChild variant="outline" size="sm">
-                    <Link to={`/projects/${id}/azure-environment`}>
+                    <Link to={`/projects/${id}/databases`}>
                       <Database />
-                      Azure databases
-                    </Link>
-                  </Button>
-                )}
-                {targets.some(
-                  (t) => t.provider === "aws" && t.cluster_type === "eks",
-                ) && (
-                  <Button asChild variant="outline" size="sm">
-                    <Link to={`/projects/${id}/aws-environment`}>
-                      <Database />
-                      AWS databases
+                      PostgreSQL databases
                     </Link>
                   </Button>
                 )}

@@ -561,7 +561,7 @@ export function RepositoryCdPage() {
                 {selectedTarget?.provider !== "aws" ? <FieldBlock label="Kubeconfig strategy">
                   <Select
                     value={isPrivateTarget ? "in_cluster" : reviewed ? "azure_cli" : kubeconfigStrategy}
-                    disabled={reviewed || reviewedPolicy.isPending}
+                    disabled={isPrivateTarget || reviewed || reviewedPolicy.isPending}
                     onValueChange={(v) =>
                       setKubeconfigStrategy(v as CdKubeconfigStrategy)
                     }
@@ -570,13 +570,18 @@ export function RepositoryCdPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="in_cluster">Project ServiceAccount</SelectItem>
-                      <SelectItem value="secret">
-                        secret (KUBECONFIG_CONTENT)
-                      </SelectItem>
-                      <SelectItem value="azure_cli">
-                        azure_cli (az get-credentials)
-                      </SelectItem>
+                      {isPrivateTarget ? (
+                        <SelectItem value="in_cluster">Project ServiceAccount</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="secret">
+                            secret (KUBECONFIG_CONTENT)
+                          </SelectItem>
+                          <SelectItem value="azure_cli">
+                            azure_cli (az get-credentials)
+                          </SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </FieldBlock> : (
