@@ -33,5 +33,9 @@ jobs:
         run: npm test
       - name: Type-check and build
         run: npm run build
+      - name: Verify animation failures cannot break sign-in
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e:animations
       - name: Lint
         run: npm run lint
