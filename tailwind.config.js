@@ -71,7 +71,7 @@ export default {
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "IBM Plex Sans",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -80,7 +80,6 @@ export default {
           "sans-serif",
         ],
         mono: [
-          "JetBrains Mono",
           "ui-monospace",
           "SFMono-Regular",
           "Menlo",
@@ -88,12 +87,6 @@ export default {
           "Consolas",
           "monospace",
         ],
-      },
-      backgroundImage: {
-        "grid-violet":
-          "radial-gradient(circle at 1px 1px, rgba(139,92,246,0.08) 1px, transparent 0)",
-        "glow-violet":
-          "radial-gradient(circle at 50% 0%, rgba(139,92,246,0.25), transparent 60%)",
       },
       keyframes: {
         "accordion-down": {

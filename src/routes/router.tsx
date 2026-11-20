@@ -5,6 +5,7 @@ import { AuthLayout } from "@/layouts/auth-layout";
 import { ProtectedRoute } from "./protected-route";
 
 import { LoginPage } from "@/pages/login";
+import { AuthArrivalPage } from "@/pages/auth-arrival";
 import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProjectsListPage } from "@/pages/projects/projects-list";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "/auth/callback", element: <OidcCallbackPage /> },
+  { path: "/auth/arrival", element: <AuthArrivalPage /> },
   { path: "/auth/logout/callback", element: <OidcLogoutCallbackPage /> },
   {
     element: <ProtectedRoute />,

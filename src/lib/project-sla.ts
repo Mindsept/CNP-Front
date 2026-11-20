@@ -1,6 +1,6 @@
 import type { CloudTarget } from "@/types/cloud-target";
 
-const sources = {
+const sources: Partial<Record<CloudTarget["provider"], string>> = {
   aws: "https://aws.amazon.com/eks/sla/",
   azure: "https://learn.microsoft.com/en-us/azure/aks/free-standard-pricing-tiers",
   gcp: "https://cloud.google.com/kubernetes-engine/sla",

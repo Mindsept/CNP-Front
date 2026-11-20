@@ -96,13 +96,13 @@ src/
 
 ## Theme
 
-The UI is a premium dark theme on a near-black background (`#050711`) with
-violet (`#8B5CF6`) and blue (`#38BDF8`) accents. Surfaces use subtle glass
-effects and tasteful shadows — no cheap gradients, no random emojis, no
-placeholder copy.
+The Graphite theme uses matte charcoal surfaces, an ice-blue action accent,
+IBM Plex Sans and monospace technical identifiers. Shared components apply
+the same tokens to projects, delivery, observability and review screens.
+The CNP mark is a lightweight layers icon with a text wordmark.
 
-The logo at `/public/logo.png` is reused on the login page, sidebar and
-favicon. If the file is missing, the UI falls back to a `CNP` text mark.
+See [Graphite design and validation](docs/graphite-design.md) for the scope,
+local startup instructions and the matching Keycloak theme.
 
 ---
 
@@ -249,6 +249,7 @@ Project pages expose AWS EKS/RDS and Azure AKS/PostgreSQL environments.
 Database connection keys can be mapped to `DATABASE_URL` in the CD preview;
 the frontend sends secret names only, while the API resolves their values from
 the configured secret store. Normal CD supports AWS EKS and Azure AKS.
-MCP human-reviewed CD currently supports Azure AKS only; the UI blocks AWS
-targets when the project's MCP policy is enabled instead of generating Azure
-authentication settings for an AWS deployment.
+Human-reviewed CD in the portal supports Azure AKS and existing private k3s
+targets. MCP clients support Azure AKS only. The UI blocks AWS targets under
+the review policy. See [private k3s onboarding](docs/private-k3s.md) for contract
+import, observer credentials, reviews and HTTPS delivery.

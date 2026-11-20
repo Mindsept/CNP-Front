@@ -5,7 +5,7 @@ import type { CloudTarget } from "@/types/cloud-target";
 function target(id: string, provider: CloudTarget["provider"], config: CloudTarget["config"] = {}): CloudTarget {
   return {
     id, name: id, provider, config,
-    cluster_type: { aws: "eks", azure: "aks", gcp: "gke" }[provider] as CloudTarget["cluster_type"],
+    cluster_type: { aws: "eks", azure: "aks", gcp: "gke", private: "k3s" }[provider] as CloudTarget["cluster_type"],
     region: "eu-west-3", cluster_name: id, namespace: "apps", environment: "dev",
     project_id: null, kubeconfig_strategy: {}, deployment_defaults: {}, created_at: "", updated_at: "",
   };
@@ -30,6 +30,14 @@ describe("project SLA", () => {
     expect(projectSla(["eks", "aks"], [eks, target("aks", "azure", { sku_tier: "Premium" })]))
       .toMatchObject({ kind: "unknown", percent: null });
     expect(projectSla(["eks", "missing"], [eks])).toMatchObject({ kind: "unknown", percent: null });
+  });
+
+  it("keeps private k3s visible without inventing a provider SLA or source", () => {
+    const result = projectSla(["eks", "private"], [eks, target("private", "private")]);
+    expect(result).toMatchObject({ kind: "unknown", percent: null });
+    expect(result.rows.find(({ id }) => id === "private")).toMatchObject({
+      sla: { kind: "unknown" }, source: undefined,
+    });
   });
 
   it("excludes decommissioned targets and handles an empty project", () => {

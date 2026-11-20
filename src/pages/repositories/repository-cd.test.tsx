@@ -7,6 +7,9 @@ import { cdService } from "@/services/cd.service";
 import { mcpService } from "@/services/mcp.service";
 import { repositoryService } from "@/services/repository.service";
 import { containerRegistryService } from "@/services/container-registry.service";
+import { observabilityService } from "@/services/observability.service";
+import { authService } from "@/services/auth.service";
+import { projectService } from "@/services/project.service";
 import type { CdRequirements } from "@/types/cd";
 
 vi.mock("@/services/repository.service", () => ({
@@ -17,13 +20,19 @@ vi.mock("@/services/container-registry.service", () => ({
 }));
 vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
 vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn() } }));
+vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
+vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
+vi.mock("@/services/project.service", () => ({ projectService: { get: vi.fn() } }));
+// This page fixture represents the authenticated project owner used by /me below.
+// The observability card keys its durable receipt by this real account identity.
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user", role: "user" }, isLoading: false, error: null }) }));
 
-function requirements(provider: "aws" | "azure"): CdRequirements {
+function requirements(provider: "aws" | "azure" | "private"): CdRequirements {
   return {
     repository_id: "repo",
     cloud_targets: [{
       id: "target", project_id: "project", name: "Cluster", environment: "dev",
-      provider, cluster_type: provider === "aws" ? "eks" : "aks", region: "test-region",
+      provider, cluster_type: provider === "private" ? "k3s" : provider === "aws" ? "eks" : "aks", region: "test-region",
       cluster_name: "cluster", namespace: "app", config: {}, kubeconfig_strategy: {},
       deployment_defaults: {}, created_at: "2026-01-01", updated_at: "2026-01-01",
     }],
@@ -57,12 +66,18 @@ describe("CD integration across MCP and database provisioning", () => {
     // Keep the preview request pending to inspect the submitted payload without a live backend.
     vi.mocked(cdService.preview).mockReset().mockImplementation(() => new Promise(() => {}));
     vi.mocked(mcpService.policy).mockReset().mockResolvedValue({ enabled: false, target_ids: [], version: 1 });
+    vi.mocked(observabilityService.list).mockReset().mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+    vi.mocked(authService.me).mockReset().mockResolvedValue({ id: "user", role: "user" });
+    vi.mocked(projectService.get).mockReset().mockResolvedValue({
+      id: "project", name: "Project", slug: "project", description: null, owner_id: "user",
+      members: [{ user_id: "user", email: "user@example.test", role: "owner" }],
+    });
   });
 
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {
     vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
     renderPage();
-    await screen.findByText(/Human-reviewed CD currently supports Azure AKS only/);
+    await screen.findByText(/Human-reviewed CD supports Azure AKS and private k3s/);
     for (const button of screen.getAllByRole("button", { name: "Generate CD preview" })) expect(button).toBeDisabled();
     expect(cdService.preview).not.toHaveBeenCalled();
   });
@@ -90,4 +105,25 @@ describe("CD integration across MCP and database provisioning", () => {
       cloud_target_id: "target", kubeconfig_strategy: "azure_cli", include_image_pull_secret: false,
     })));
   });
+  it("does not offer private ServiceAccount credentials for legacy Azure targets", async () => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true, value: vi.fn(),
+    });
+    vi.mocked(cdService.requirements).mockResolvedValue(requirements("azure"));
+    renderPage();
+    await screen.findByText("Kubeconfig strategy");
+    const trigger = screen.getByText("secret (KUBECONFIG_CONTENT)").closest("button")!;
+    fireEvent.click(trigger);
+    expect(await screen.findByRole("option", { name: "azure_cli (az get-credentials)" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Project ServiceAccount" })).not.toBeInTheDocument();
+  });
+  it("uses the project ServiceAccount and ClusterIP for reviewed private targets", async () => {
+    vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
+    vi.mocked(cdService.requirements).mockResolvedValue(requirements("private"));
+    renderPage();
+    expect(await screen.findByText("Project ServiceAccount")).toBeInTheDocument();
+    expect(screen.queryByText(/Azure OIDC is preconfigured/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Applications are exposed through HTTPS ingress/)).toBeInTheDocument();
+  });
+
 });

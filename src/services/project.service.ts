@@ -22,6 +22,10 @@ export const projectService = {
     return api.get<Project>(`/projects/${projectId}`);
   },
 
+  remove(projectId: string, name: string): Promise<void> {
+    return api.delete<void>(`/projects/${projectId}`, { data: { name } });
+  },
+
   update(projectId: string, input: Partial<CreateProjectInput>): Promise<Project> {
     return api.patch<Project>(`/projects/${projectId}`, input);
   },
