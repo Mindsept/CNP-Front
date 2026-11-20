@@ -20,7 +20,7 @@ const STATUS_META: Record<
   pending: {
     label: "Pending",
     variant: "warning",
-    hint: "Waiting for LoadBalancer IP",
+    hint: "Waiting for rollout or application exposure",
   },
   deployed: {
     label: "Deployed",

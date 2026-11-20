@@ -1,5 +1,5 @@
-export type CloudProvider = "azure" | "aws" | "gcp";
-export type ClusterType = "aks" | "eks" | "gke";
+export type CloudProvider = "azure" | "aws" | "gcp" | "private";
+export type ClusterType = "aks" | "eks" | "gke" | "k3s";
 export type ServiceType = "LoadBalancer" | "ClusterIP" | "NodePort";
 
 export interface CloudTargetConfig {
@@ -10,6 +10,7 @@ export interface CloudTargetConfig {
 }
 
 export interface KubeconfigStrategy {
+  mode?: "in_cluster" | null;
   option_a_secret_name?: string;
   option_b_secret_names?: {
     azure_client_id?: string;

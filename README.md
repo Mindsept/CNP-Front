@@ -249,6 +249,7 @@ Project pages expose AWS EKS/RDS and Azure AKS/PostgreSQL environments.
 Database connection keys can be mapped to `DATABASE_URL` in the CD preview;
 the frontend sends secret names only, while the API resolves their values from
 the configured secret store. Normal CD supports AWS EKS and Azure AKS.
-MCP human-reviewed CD currently supports Azure AKS only; the UI blocks AWS
-targets when the project's MCP policy is enabled instead of generating Azure
-authentication settings for an AWS deployment.
+Human-reviewed CD in the portal supports Azure AKS and existing private k3s
+targets. MCP clients support Azure AKS only. The UI blocks AWS targets under
+the review policy. See [private k3s onboarding](docs/private-k3s.md) for contract
+import, observer credentials, reviews and HTTPS delivery.

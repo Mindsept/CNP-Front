@@ -14,12 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { CloudProvider } from "@/types/cloud-target";
 import type { CdCreatePrInput } from "@/types/cd";
 
 interface CdCreatePrDialogProps {
   open: boolean;
   defaultBranch: string;
-  provider?: "azure" | "aws" | "gcp";
+  provider?: CloudProvider;
   loading?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: CdCreatePrInput) => void;
@@ -43,7 +44,7 @@ export function CdCreatePrDialog({
   const [branchName, setBranchName] = useState(defaults.branch_name);
   const [commitMessage, setCommitMessage] = useState(defaults.commit_message);
   const [prTitle, setPrTitle] = useState(defaults.pull_request_title);
-  const platform = provider === "aws" ? "EKS" : provider === "gcp" ? "GKE" : "AKS";
+  const platform = provider === "private" ? "k3s" : provider === "aws" ? "EKS" : provider === "gcp" ? "GKE" : "AKS";
   const [prBody, setPrBody] = useState("");
   const [syncSecrets, setSyncSecrets] = useState(true);
 
