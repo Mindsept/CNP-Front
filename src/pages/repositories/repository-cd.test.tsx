@@ -19,7 +19,7 @@ vi.mock("@/services/container-registry.service", () => ({
   containerRegistryService: { list: vi.fn().mockResolvedValue({ items: [] }) },
 }));
 vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
-vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn() } }));
+vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn(), resolveImage: vi.fn() } }));
 vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
 vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
 vi.mock("@/services/project.service", () => ({ projectService: { get: vi.fn() } }));
@@ -104,6 +104,39 @@ describe("CD integration across MCP and database provisioning", () => {
     await waitFor(() => expect(cdService.preview).toHaveBeenCalledWith("repo", expect.objectContaining({
       cloud_target_id: "target", kubeconfig_strategy: "azure_cli", include_image_pull_secret: false,
     })));
+  });
+
+  it("populates and submits the verified image from the latest CI merge", async () => {
+    const image = "ghcr.io/team/app@sha256:" + "a".repeat(64);
+    vi.mocked(cdService.requirements).mockResolvedValue({
+      ...requirements("azure"), default_image: "", latest_ci_merge_action_id: "ci-merge",
+    });
+    vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
+    vi.mocked(cdService.resolveImage).mockResolvedValue({ image });
+    renderPage();
+    expect(await screen.findByDisplayValue(image)).toBeInTheDocument();
+    expect(cdService.resolveImage).toHaveBeenCalledWith("repo", "ci-merge", expect.any(AbortSignal));
+    fireEvent.click(screen.getAllByRole("button", { name: "Generate CD preview" })[0]);
+    await waitFor(() => expect(cdService.preview).toHaveBeenCalledWith("repo", expect.objectContaining({ image })));
+  });
+
+  it("keeps a manual image selection while automatic verification finishes", async () => {
+    let finish!: (result: { image: string }) => void;
+    const image = "ghcr.io/team/app@sha256:" + "a".repeat(64);
+    const manual = "ghcr.io/team/app@sha256:" + "b".repeat(64);
+    vi.mocked(cdService.requirements).mockResolvedValue({
+      ...requirements("azure"), default_image: "", latest_ci_merge_action_id: "ci-merge",
+    });
+    vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
+    vi.mocked(cdService.resolveImage).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderPage();
+    await screen.findByText("Checking the latest CI image…");
+    fireEvent.change(screen.getByPlaceholderText("ghcr.io/owner/repo"), { target: { value: manual } });
+    finish({ image });
+    fireEvent.click(screen.getAllByRole("button", { name: "Generate CD preview" })[0]);
+    await waitFor(() => expect(cdService.preview).toHaveBeenCalledWith("repo", expect.objectContaining({ image: manual })));
+    fireEvent.click(screen.getByRole("button", { name: "Use latest CI image" }));
+    expect(await screen.findByDisplayValue(image)).toBeInTheDocument();
   });
   it("does not offer private ServiceAccount credentials for legacy Azure targets", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {

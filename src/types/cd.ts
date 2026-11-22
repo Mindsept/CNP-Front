@@ -44,6 +44,7 @@ export interface CdRequirements {
   suggested_mappings: CdSuggestedMapping[];
   missing_project_secrets: string[];
   default_image: string;
+  latest_ci_merge_action_id?: string | null;
 }
 
 export interface CdPreviewInput {
