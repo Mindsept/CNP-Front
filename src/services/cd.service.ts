@@ -11,6 +11,11 @@ import type {
 } from "@/types/cd";
 
 export const cdService = {
+  resolveImage(repositoryId: string, mergeActionId: string, signal?: AbortSignal) {
+    return api.get<{ image: string }>(
+      `/repositories/${repositoryId}/images/${encodeURIComponent(mergeActionId)}`, { signal },
+    );
+  },
   observeExisting(repositoryId: string, input: { cloud_target_id: string; app_name: string }): Promise<CdDeploymentStatus> {
     return api.post<CdDeploymentStatus>(`/repositories/${repositoryId}/cd/observe-existing`, input);
   },

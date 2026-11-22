@@ -87,7 +87,10 @@ function sanitizeK8sName(value: string): string {
 
 export function RepositoryCdPage() {
   const { repositoryId } = useParams<{ repositoryId: string }>();
-  const id = repositoryId!;
+  return <RepositoryCdForm key={repositoryId} id={repositoryId!} />;
+}
+
+function RepositoryCdForm({ id }: { id: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const onError = useToastError();
   const qc = useQueryClient();
@@ -127,7 +130,7 @@ export function RepositoryCdPage() {
 
   const [cloudTargetId, setCloudTargetId] = useState<string>("");
   const [appName, setAppName] = useState("");
-  const [image, setImage] = useState("");
+  const [imageOverride, setImageOverride] = useState<string | undefined>();
   const [imageTag, setImageTag] = useState("latest");
   const [containerPort, setContainerPort] = useState(8000);
   const [replicas, setReplicas] = useState(1);
@@ -148,6 +151,19 @@ export function RepositoryCdPage() {
   const projectId = repoQuery.data?.project_id;
   const reviewedPolicy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
   const reviewed = Boolean(reviewedPolicy.data?.enabled);
+  const mergeId = requirementsQuery.data?.latest_ci_merge_action_id;
+  const verifiedImage = useQuery({
+    queryKey: ["repository", id, "verified-ci-image", mergeId],
+    queryFn: ({ signal }) => cdService.resolveImage(id, mergeId!, signal),
+    enabled: Boolean(reviewed && mergeId && imageOverride === undefined),
+    staleTime: 60_000,
+    retry: false,
+    refetchInterval: query => query.state.error instanceof ApiError &&
+      query.state.error.code === "image_build_pending" ? 15_000 : false,
+  });
+  const image = imageOverride ?? (reviewed && mergeId
+    ? verifiedImage.data?.image ?? ""
+    : requirementsQuery.data?.default_image ?? "");
   const [approved, setApproved] = useState(false);
   const [pr, setPr] = useState<CdCreatePrResponse | null>(null);
   const [prOpen, setPrOpen] = useState(false);
@@ -164,9 +180,6 @@ export function RepositoryCdPage() {
     if (!requirements) return;
     if (!cloudTargetId && requirements.cloud_targets[0]) {
       setCloudTargetId(requirements.cloud_targets[0].id);
-    }
-    if (!image && requirements.default_image) {
-      setImage(requirements.default_image);
     }
     if (!appName && repoQuery.data?.full_name) {
       const last = repoQuery.data.full_name.split("/").pop() ?? "app";
@@ -398,7 +411,7 @@ export function RepositoryCdPage() {
 
       <RepositoryWorkspaceNav repositoryId={id} />
       <RepositoryObservabilityPanel key={`${id}:${preview?.cd_pipeline_id ?? "none"}`} projectId={projectId} repositoryId={id} pipeline={preview} />
-      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" hasPublishedPr={pipelinesQuery.data?.items.some(p => p.id === preview?.cd_pipeline_id && Boolean(p.pull_request_url))} />
+      <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" onImageResolved={setImageOverride} hasPublishedPr={pipelinesQuery.data?.items.some(p => p.id === preview?.cd_pipeline_id && Boolean(p.pull_request_url))} />
 
       {isPrivateTarget && !reviewed && <div role="alert" className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm">
         Private deployments require human-reviewed operations. Ask an administrator to enable them and authorize this target in project settings.
@@ -491,10 +504,22 @@ export function RepositoryCdPage() {
                 <FieldBlock label="Image">
                   <Input
                     value={image}
-                    onChange={(e) => setImage(e.target.value)}
+                    onChange={(e) => setImageOverride(e.target.value)}
                     className="font-mono text-sm"
                     placeholder="ghcr.io/owner/repo"
                   />
+                  {reviewed && imageOverride === undefined && mergeId && (
+                    verifiedImage.isLoading ? <p role="status">Checking the latest CI image…</p>
+                    : verifiedImage.isError ? <div role="status">
+                      {verifiedImage.error instanceof ApiError && verifiedImage.error.code === "image_build_pending"
+                        ? "Waiting for a successful CI build. Checking again automatically."
+                        : <>Could not verify the CI image. <Button variant="outline" onClick={() => void verifiedImage.refetch()}>Retry</Button></>}
+                    </div> : null
+                  )}
+                  {reviewed && imageOverride === undefined && requirementsQuery.data?.latest_ci_merge_action_id === null &&
+                    <p className="text-sm text-muted-foreground">Merge a reviewed CI pull request to select its image automatically.</p>}
+                  {reviewed && mergeId && imageOverride !== undefined &&
+                    <Button variant="outline" onClick={() => setImageOverride(undefined)}>Use latest CI image</Button>}
                 </FieldBlock>
 
                 <div hidden={isPrivateTarget}>

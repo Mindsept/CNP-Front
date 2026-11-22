@@ -4,19 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/common/section-card";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api";
+import { cdService } from "@/services/cd.service";
 import { mcpService } from "@/services/mcp.service";
 import { useToastError } from "@/hooks/use-toast-error";
 import type { Action, ActionType } from "@/types/mcp";
 import { PullRequestChecks, pullRequestChecks } from "./pull-request-checks";
 
-export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, kind, hasPublishedPr }: { projectId?: string; repositoryId: string; pipelineId?: string; kind: "ci" | "cd"; hasPublishedPr?: boolean }) {
+export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, kind, hasPublishedPr, onImageResolved }: { projectId?: string; repositoryId: string; pipelineId?: string; kind: "ci" | "cd"; hasPublishedPr?: boolean; onImageResolved?: (image: string) => void }) {
   const error = useToastError();
   const policy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
   const [action, setAction] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
   const [mergeId, setMergeId] = useState("");
-  const [image, setImage] = useState("");
   const [offset, setOffset] = useState(0);
   const actionsQuery = useQuery({
     queryKey: ["pipeline-actions", repositoryId, pipelineId, offset],
@@ -43,7 +42,17 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
       void actionsQuery.refetch();
     } catch (e) { error(e, "This step is not ready or lacks permission"); } finally { setBusy(false); }
   }
-  async function resolve() { setBusy(true); try { const result = await api.get<{ image: string }>(`/repositories/${repositoryId}/images/${encodeURIComponent(mergeId)}`); setImage(result.image); } catch (e) { error(e, "The reviewed CI image is not available"); } finally { setBusy(false); } }
+  async function resolve() {
+    setBusy(true);
+    try {
+      const result = await cdService.resolveImage(repositoryId, mergeId.trim());
+      onImageResolved?.(result.image);
+    } catch (e) {
+      error(e, "The reviewed CI image is not available");
+    } finally {
+      setBusy(false);
+    }
+  }
   const rows = actionsQuery.data?.items ?? [];
   const actions = action && !rows.some(a => a.id === action.id) ? [action, ...rows] : rows;
   const blocked = !pipelineId || busy || actionsQuery.isPending || actionsQuery.isError;
@@ -62,7 +71,7 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
       <Button variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))}>Previous actions</Button>
       <Button variant="outline" disabled={actionsQuery.data.next_offset === null} onClick={() => setOffset(actionsQuery.data!.next_offset!)}>Next actions</Button>
     </div>}
-    {kind === "cd" && <div className="mb-4 space-y-3"><label>Successful CI merge action ID<Input value={mergeId} onChange={e => setMergeId(e.target.value)} /></label><Button disabled={busy || !mergeId} variant="outline" onClick={() => void resolve()}>Resolve verified image</Button>{image && <p className="break-all">Use this digest in the image field: {image}</p>}</div>}
+    {kind === "cd" && <details className="mb-4 space-y-3"><summary>Choose a specific CI merge</summary><label>Successful CI merge action ID<Input value={mergeId} onChange={e => setMergeId(e.target.value)} /></label><Button disabled={busy || !mergeId.trim()} variant="outline" onClick={() => void resolve()}>Use verified image</Button></details>}
     {published && checksQuery.isPending && <p role="status" className="mb-4 text-sm text-muted-foreground">Loading GitHub checks…</p>}
     {published && checksQuery.isError && <p role="alert" className="mb-4 text-sm">Could not refresh GitHub checks. <Button variant="outline" onClick={() => void checksQuery.refetch()}>Retry</Button></p>}
     {published && checksQuery.data && <PullRequestChecks pr={checksQuery.data} />}
