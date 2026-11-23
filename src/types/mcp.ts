@@ -15,6 +15,14 @@ export interface Action {
     files?: Record<string, string>; diff?: Record<string, string>; effects: string[]; [key: string]: unknown };
   effects: Record<string, unknown>; job_id: string | null; error_code: string | null; review_expires_at: string | null;
 }
+export interface DeploymentObservation {
+  status: string;
+  replicas_ready: boolean;
+  available_replicas?: number;
+  public_address: string | null;
+  public_url?: string | null;
+  workflow_url?: string;
+}
 export interface Challenge { challenge: string; fingerprint: string; expires_at: string; snapshot: Action["snapshot"]; }
 export interface Connection { id: string; client_name: string; scopes: string[]; project_ids: string[]; created_at: string; revoked_at: string | null; }
 export interface McpPolicy { enabled: boolean; target_ids: string[]; version: number; }

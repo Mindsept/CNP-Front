@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import { getValidAccessToken } from "@/auth/oidc-client";
 import { env } from "@/config/env";
-import type { Action, ActionType, Challenge, Connection, GithubDeploymentPermissions, McpPolicy, PullRequestStatus, RunProgress } from "@/types/mcp";
+import type { Action, ActionType, Challenge, Connection, DeploymentObservation, GithubDeploymentPermissions, McpPolicy, PullRequestStatus, RunProgress } from "@/types/mcp";
 import type { TrafficConfiguration, TrafficInput, TrafficStatus } from "@/types/traffic";
 
 let browserSession: { token: string; csrf: string } | null = null;
@@ -59,7 +59,7 @@ export const mcpService = {
     api.post<Action>("/actions", { repository_id, pipeline_id, type, pipeline_kind, idempotency_key: crypto.randomUUID() }),
   run: (id: string) => api.get<RunProgress>(`/deployment-runs/${id}`),
   cancelRun: (id: string) => api.post(`/deployment-runs/${id}/cancel`),
-  deployment: (id: string) => api.get<Record<string, unknown>>(`/deployments/${id}`),
+  deployment: (id: string) => api.get<DeploymentObservation>(`/deployments/${id}`),
   policy: (projectId: string) => api.get<McpPolicy>(`/projects/${projectId}/mcp-policy`),
   async savePolicy(projectId: string, enabled: boolean, target_ids: string[]) {
     return api.put<McpPolicy>(`/projects/${projectId}/mcp-policy`, { enabled, target_ids }, { headers: { "X-CNP-CSRF": await csrf() } });

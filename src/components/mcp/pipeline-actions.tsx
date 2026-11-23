@@ -10,6 +10,8 @@ import { useToastError } from "@/hooks/use-toast-error";
 import type { Action, ActionType } from "@/types/mcp";
 import { PullRequestChecks, pullRequestChecks } from "./pull-request-checks";
 
+import { ReviewedDeploymentStatus } from "./reviewed-deployment-status";
+
 export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, kind, hasPublishedPr, onImageResolved }: { projectId?: string; repositoryId: string; pipelineId?: string; kind: "ci" | "cd"; hasPublishedPr?: boolean; onImageResolved?: (image: string) => void }) {
   const error = useToastError();
   const policy = useQuery({ queryKey: ["mcp-policy", projectId], queryFn: () => mcpService.policy(projectId!), enabled: Boolean(projectId) });
@@ -63,7 +65,7 @@ export function ReviewedPipelineActions({ projectId, repositoryId, pipelineId, k
     {pipelineId && actionsQuery.isPending && <p>Loading existing actions…</p>}
     {actionsQuery.isError && <p role="alert">Existing actions could not be loaded. <Button variant="outline" onClick={() => void actionsQuery.refetch()}>Retry</Button></p>}
     <ul className="mb-4 space-y-3">{actions.map(a => <li key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
-      <span>{a.type === "ci_pr" || a.type === "cd_pr" ? "PR publication" : a.type} · {a.status}</span>
+      {a.type === "deployment" && a.status === "succeeded" ? <ReviewedDeploymentStatus actionId={a.id} /> : <span>{a.type === "ci_pr" || a.type === "cd_pr" ? "PR publication" : a.type} · {a.status}</span>}
       <Button variant="outline" asChild><Link to={`/mcp/reviews/${a.id}`}>{["prepared", "awaiting_review"].includes(a.status) ? "Review publication" : "View action"}</Link></Button>
       {a.job_id && <Link className="text-primary" to={`/jobs/${a.job_id}`}>View execution job</Link>}
     </li>)}</ul>
