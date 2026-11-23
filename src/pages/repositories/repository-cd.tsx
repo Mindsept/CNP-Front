@@ -2,7 +2,7 @@ import { RepositoryObservabilityPanel } from "@/components/observability/reposit
 import { mcpService } from "@/services/mcp.service";
 import { ReviewedPipelineActions } from "@/components/mcp/pipeline-actions";
 import { RepositoryWorkspaceNav } from "@/components/common/repository-workspace-nav";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -87,11 +87,98 @@ function sanitizeK8sName(value: string): string {
 
 export function RepositoryCdPage() {
   const { repositoryId } = useParams<{ repositoryId: string }>();
-  return <RepositoryCdForm key={repositoryId} id={repositoryId!} />;
+  const id = repositoryId!;
+  const [params, setParams] = useSearchParams();
+  const requirements = useQuery({
+    queryKey: ["repository", id, "cd", "requirements"],
+    queryFn: () => cdService.requirements(id),
+  });
+  const pipelines = useQuery({
+    queryKey: ["repository", id, "cd"],
+    queryFn: () => cdService.list(id),
+  });
+  const targets = requirements.data?.cloud_targets ?? [];
+  const linked = pipelines.data?.items.find(p => p.id === params.get("pipeline"));
+  const target = targets.find(t => t.id === (params.get("target") ?? linked?.cloud_target_id)) ?? targets[0];
+  const dev = params.get("env") === "dev";
+  function select(targetId: string, simulated: boolean) {
+    setParams({ target: targetId, env: simulated ? "dev" : "prod" });
+  }
+
+  const picker = target && (
+    <SectionCard title="Deployment environment">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldBlock label="Cloud target">
+          <Select value={target.id} onValueChange={id => select(id, dev)}>
+            <SelectTrigger aria-label="Cloud target">
+              <SelectValue placeholder="Pick a cluster" />
+            </SelectTrigger>
+            <SelectContent>
+              {targets.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  <span className="flex items-center gap-2">
+                    {t.provider === "azure" ? (
+                      <AzureLogo className="h-3.5 w-3.5 shrink-0" />
+                    ) : t.provider === "aws" ? (
+                      <AwsLogo className="h-3.5 w-3.5 shrink-0" />
+                    ) : null}
+                    <span>
+                      {t.name} · {t.cluster_name} ({t.region})
+                    </span>
+                    {t.project_id === null ? (
+                      <Badge variant="info" className="ml-1">
+                        Global
+                      </Badge>
+                    ) : null}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldBlock>
+        <FieldBlock label="Environment">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Deployment environment">
+            <Button variant={dev ? "default" : "outline"} aria-pressed={dev} onClick={() => select(target.id, true)}>Dev · simulation</Button>
+            <Button variant={dev ? "outline" : "default"} aria-pressed={!dev} onClick={() => select(target.id, false)}>Prod · live target</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Configured cloud environment · {target.environment}</p>
+        </FieldBlock>
+      </div>
+    </SectionCard>
+  );
+  if (dev) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="CD workflow" icon={Rocket} back={{ to: `/repositories/${id}`, label: "Repository" }} />
+        <RepositoryWorkspaceNav repositoryId={id} />
+        {picker}
+        {target ? <DevDeployment key={`${id}:${target.id}`} cluster={target.cluster_name} />
+          : requirements.isPending ? <LoadingState rows={2} />
+          : requirements.isError ? <ErrorState title="Could not load cloud targets" error={requirements.error} onRetry={() => requirements.refetch()} />
+          : <EmptyState icon={Cloud} title="No cloud node configured" description="Register a target to simulate a Dev deployment." />}
+      </div>
+    );
+  }
+  return <RepositoryCdForm key={`${id}:${params.get("target") ?? linked?.cloud_target_id ?? "default"}`} id={id} cloudTargetId={target?.id ?? ""} environmentPicker={picker} />;
 }
 
-function RepositoryCdForm({ id }: { id: string }) {
+function DevDeployment({ cluster }: { cluster: string }) {
+  const [simulated, setSimulated] = useState(false);
+  return (
+    <SectionCard title="Dev deployment" description="Run a local simulation for this target.">
+      <Button onClick={() => setSimulated(true)}>Simulate deployment</Button>
+      {simulated && <p role="status" className="mt-3 text-sm">Simulation completed for {cluster}. Cloud resources and GitHub were untouched.</p>}
+    </SectionCard>
+  );
+}
+
+function RepositoryCdForm({ id, cloudTargetId, environmentPicker }: { id: string; cloudTargetId: string; environmentPicker: React.ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const activeForm = useRef(true);
+  useEffect(() => {
+    activeForm.current = true;
+    return () => { activeForm.current = false; };
+  }, []);
   const onError = useToastError();
   const qc = useQueryClient();
 
@@ -110,7 +197,8 @@ function RepositoryCdForm({ id }: { id: string }) {
     queryFn: () => cdService.list(id),
     refetchInterval: 10000,
   });
-  const selectedPipelineId = searchParams.get("pipeline") ?? pipelinesQuery.data?.items[0]?.id;
+  const targetPipelines = pipelinesQuery.data?.items.filter(p => p.cloud_target_id === cloudTargetId) ?? [];
+  const selectedPipelineId = targetPipelines.find(p => p.id === searchParams.get("pipeline"))?.id ?? targetPipelines[0]?.id;
   const persistedPreview = useQuery({
     queryKey: ["repository", id, "cd", selectedPipelineId],
     queryFn: () => cdService.get(id, selectedPipelineId!),
@@ -128,7 +216,6 @@ function RepositoryCdForm({ id }: { id: string }) {
     null;
   const hasSharedRegistry = Boolean(defaultRegistry);
 
-  const [cloudTargetId, setCloudTargetId] = useState<string>("");
   const [appName, setAppName] = useState("");
   const [imageOverride, setImageOverride] = useState<string | undefined>();
   const [imageTag, setImageTag] = useState("latest");
@@ -178,9 +265,6 @@ function RepositoryCdForm({ id }: { id: string }) {
   useEffect(() => {
     const requirements = requirementsQuery.data;
     if (!requirements) return;
-    if (!cloudTargetId && requirements.cloud_targets[0]) {
-      setCloudTargetId(requirements.cloud_targets[0].id);
-    }
     if (!appName && repoQuery.data?.full_name) {
       const last = repoQuery.data.full_name.split("/").pop() ?? "app";
       setAppName(sanitizeK8sName(last));
@@ -235,12 +319,13 @@ function RepositoryCdForm({ id }: { id: string }) {
         ),
       }),
     onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["repository", id, "cd"] });
+      if (!activeForm.current) return;
       setPreview(data);
-      setSearchParams({ pipeline: data.cd_pipeline_id }, { replace: true });
+      setSearchParams({ target: cloudTargetId, pipeline: data.cd_pipeline_id }, { replace: true });
       setApproved(false);
       setPr(null);
       toast.success("CD preview generated");
-      qc.invalidateQueries({ queryKey: ["repository", id, "cd"] });
     },
     onError: (err) => onError(err, "Could not generate CD preview"),
   });
@@ -289,10 +374,7 @@ function RepositoryCdForm({ id }: { id: string }) {
   });
 
   // A pipeline can only have a deployment once its PR is created.
-  const deployablePipelineId = useMemo(() => {
-    const items = pipelinesQuery.data?.items ?? [];
-    return items.find((p) => p.status === "pr_created")?.id ?? null;
-  }, [pipelinesQuery.data]);
+  const deployablePipelineId = targetPipelines.find(p => p.status === "pr_created")?.id;
 
   const deploymentQueryKey = [
     "repository",
@@ -410,6 +492,7 @@ function RepositoryCdForm({ id }: { id: string }) {
       />
 
       <RepositoryWorkspaceNav repositoryId={id} />
+      {environmentPicker}
       <RepositoryObservabilityPanel key={`${id}:${preview?.cd_pipeline_id ?? "none"}`} projectId={projectId} repositoryId={id} pipeline={preview} />
       <ReviewedPipelineActions projectId={projectId} repositoryId={id} pipelineId={preview?.cd_pipeline_id} kind="cd" onImageResolved={setImageOverride} hasPublishedPr={pipelinesQuery.data?.items.some(p => p.id === preview?.cd_pipeline_id && Boolean(p.pull_request_url))} />
 
@@ -423,10 +506,10 @@ function RepositoryCdForm({ id }: { id: string }) {
         </div>
       )}
 
-      {pipelinesQuery.data && pipelinesQuery.data.items.length > 0 && (
+      {targetPipelines.length > 0 && (
         <SectionCard title="Saved CD previews" description="Open files and reviews created in CNP or by MCP without regenerating them.">
           <div className="flex flex-wrap gap-3">
-            {pipelinesQuery.data.items.map(p => <Button key={p.id} variant={p.id === selectedPipelineId ? "default" : "outline"} asChild>
+            {targetPipelines.map(p => <Button key={p.id} variant={p.id === selectedPipelineId ? "default" : "outline"} asChild>
               <Link to={`/repositories/${id}/cd?pipeline=${p.id}`}>{p.app_name} · {p.status} · {new Date(p.created_at).toLocaleString()}</Link>
             </Button>)}
           </div>
@@ -461,35 +544,6 @@ function RepositoryCdForm({ id }: { id: string }) {
               className="lg:col-span-2"
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <FieldBlock label="Cloud target">
-                  <Select value={cloudTargetId} onValueChange={setCloudTargetId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick a cluster" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {requirements!.cloud_targets.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          <span className="flex items-center gap-2">
-                            {t.provider === "azure" ? (
-                              <AzureLogo className="h-3.5 w-3.5 shrink-0" />
-                            ) : t.provider === "aws" ? (
-                              <AwsLogo className="h-3.5 w-3.5 shrink-0" />
-                            ) : null}
-                            <span>
-                              {t.name} · {t.cluster_name} ({t.region})
-                            </span>
-                            {t.project_id === null ? (
-                              <Badge variant="info" className="ml-1">
-                                Global
-                              </Badge>
-                            ) : null}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldBlock>
-
                 <FieldBlock label="App name">
                   <Input
                     value={appName}
@@ -1229,13 +1283,13 @@ function RepositoryCdForm({ id }: { id: string }) {
                 title="Could not load CD history"
                 onRetry={() => pipelinesQuery.refetch()}
               />
-            ) : (pipelinesQuery.data?.items.length ?? 0) === 0 ? (
+            ) : targetPipelines.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No CD pipeline yet. Generate a preview above.
               </p>
             ) : (
               <ul className="divide-y divide-border/60">
-                {pipelinesQuery.data!.items.map((p) => (
+                {targetPipelines.map((p) => (
                   <li
                     key={p.id}
                     className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"

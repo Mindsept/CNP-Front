@@ -74,6 +74,18 @@ describe("CD integration across MCP and database provisioning", () => {
     });
   });
 
+  it("simulates Dev locally and keeps real deployment actions in Prod", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Dev · simulation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate deployment" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Simulation completed for cluster");
+    expect(screen.queryByRole("button", { name: /Generate CD preview/i })).toBeNull();
+    expect(cdService.preview).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Prod · live target" }));
+    expect((await screen.findAllByRole("button", { name: /Generate CD preview/i })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Simulation completed/)).toBeNull();
+  });
+
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {
     vi.mocked(mcpService.policy).mockResolvedValue({ enabled: true, target_ids: ["target"], version: 1 });
     renderPage();
