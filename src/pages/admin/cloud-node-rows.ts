@@ -24,7 +24,9 @@ const demoRows: CloudNodeRow[] = demoNodes.map((node) => {
     rowKey: `demo:${node.provider}:${name}`,
     cluster_name: `${node.cluster_type}-cnp-${node.environment}`,
     namespace: `cnp-${node.environment}`,
-    config: node.provider === "azure" ? { resource_group: "rg-cnp-dev" } : {},
+    config: {
+      resource_group: node.provider === "azure" ? "rg-cnp-dev" : `rg-cnp-${node.cluster_type}-${node.environment}`,
+    },
     deployment_defaults: { service_type: node.provider === "private" ? "ClusterIP" : "LoadBalancer" },
     updated: new Intl.RelativeTimeFormat(undefined, { numeric: "always" }).format(-hours, "hour"),
   };
