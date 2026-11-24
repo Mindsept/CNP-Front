@@ -2,8 +2,8 @@
 
 ## Parcours
 
-1. `/login?next=…` affiche l’accueil Plasma du portail. « Continue to sign in » ouvre le formulaire Keycloak avec Authorization Code + PKCE.
-2. Le thème Keycloak CNP affiche Plasma, le nom d’utilisateur, le mot de passe et « Se souvenir de moi ». Le challenge A2F animé affiche six cases et confirme le code après sa vérification par Keycloak.
+1. `/login?next=…` affiche l’accueil Galaxy du portail. « Continue to sign in » ouvre le formulaire Keycloak avec Authorization Code + PKCE.
+2. Le thème Keycloak CNP affiche Galaxy, le nom d’utilisateur, le mot de passe et « Se souvenir de moi ». Le challenge A2F animé affiche six cases et confirme le code après sa vérification par Keycloak.
 3. Le callback nettoie les paramètres OIDC et ouvre `/auth/arrival?next=…`.
 4. L’arrivée attend l’identité ET le profil CNP. Après validation, la destination initiale se monte derrière une couche persistante au-dessus du routeur : accueil 900 ms, tunnel ralenti pendant 3,3 s, puis fondu croisé de 1,6 s. Le dashboard approche de 88 % à 100 % pendant son apparition. Les interactions sont désactivées pendant cette transition et le focus revient au contenu à la fin.
 5. Un échec de profil reste visible avec une action de reprise. Une session expirée affiche « Continue to sign in » sans redirection automatique répétée.
@@ -24,7 +24,7 @@ Le HTML initial fixe un fond sombre et un état de chargement avant React et les
 
 ## Mise à jour du thème Keycloak
 
-Le thème Plasma, le formulaire OTP animé et la procédure d’activation sur un realm existant se trouvent dans le dépôt IaC, dans `dev/auth/THEME.md`.
+Le thème Galaxy, le formulaire OTP animé et la procédure d’activation sur un realm existant se trouvent dans le dépôt IaC, dans `dev/auth/THEME.md`.
 
 ## Validation
 

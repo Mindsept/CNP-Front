@@ -30,7 +30,7 @@ try {
     });
     const page = await context.newPage();
     let requested = 0;
-    await page.route('**/assets/plasma-wave-*.js', route => {
+    await page.route('**/assets/Galaxy-*.js', route => {
       requested++;
       return scenario === 'unavailable-chunk' ? route.abort('failed') : route.continue();
     });
@@ -39,16 +39,20 @@ try {
     await login.waitFor();
     assert.equal(await login.isEnabled(), true, `${scenario}: sign-in remains available`);
     assert.equal(await page.getByText('Unexpected Application Error!', { exact: true }).count(), 0);
-    if (scenario === 'normal') {
-      await page.locator('.auth-plasma canvas').waitFor();
-      assert.ok(requested > 0, 'Plasma was actually loaded');
+    if (scenario === 'normal' || scenario === 'mobile') {
+      await page.locator('.cnp-space-galaxy canvas').waitFor();
+      assert.ok(requested > 0, 'Galaxy was actually loaded');
     } else if (scenario === 'unavailable-chunk') {
-      assert.ok(requested > 0, 'Plasma import was actually blocked');
-      assert.equal(await page.locator('.auth-plasma canvas').count(), 0);
+      assert.ok(requested > 0, 'Galaxy import was actually blocked');
+      assert.equal(await page.locator('.cnp-space-galaxy canvas').count(), 0);
     } else {
       assert.equal(requested, 0, `${scenario}: hidden animation must not load`);
     }
-    assert.equal(await page.locator('.auth-plasma').count(), 1);
+    assert.equal(await page.locator('.cnp-space-shade').count(), 1);
+    if (scenario === 'mobile') {
+      const pageWidth = await page.locator('html').evaluate(root => root.scrollWidth);
+      assert.ok(pageWidth <= page.viewportSize().width, 'The mobile form fits its viewport');
+    }
     console.log(`PASS: ${scenario}`);
     await context.close();
   }
