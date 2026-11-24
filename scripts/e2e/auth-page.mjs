@@ -24,7 +24,7 @@ export class AuthPage {
     await this.page.getByRole('textbox', { name: /username|email/i }).fill(account.username);
     await this.page.getByLabel('Password', { exact: true }).fill(account.password);
     await this.page.getByRole('button', { name: /sign in/i }).click();
-    const otp = this.page.getByLabel(/one-time code/i);
+    const otp = this.page.locator('.code-card input').first();
     await otp.waitFor();
     let code = totp(account.otp_secret_base32);
     if (code === this.lastCode) {
@@ -35,7 +35,6 @@ export class AuthPage {
     this.lastCode = code;
     const profile = this.page.waitForResponse(response => response.url() === `${this.api}/auth/me`);
     await otp.fill(code);
-    await this.page.getByRole('button', { name: /sign in/i }).click();
     return profile;
   }
 

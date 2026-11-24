@@ -23,31 +23,32 @@ try {
     }
   }
   browser = await chromium.launch({ headless: true, executablePath: process.env.CNP_CHROMIUM });
-  for (const scenario of ['normal', 'unavailable-chunk', 'reduced-motion']) {
+  for (const scenario of ['normal', 'unavailable-chunk', 'reduced-motion', 'mobile']) {
     const context = await browser.newContext({
+      viewport: scenario === 'mobile' ? { width: 390, height: 844 } : { width: 1280, height: 800 },
       reducedMotion: scenario === 'reduced-motion' ? 'reduce' : 'no-preference',
     });
     const page = await context.newPage();
     let requested = 0;
-    await page.route('**/assets/Galaxy-*.js', route => {
+    await page.route('**/assets/plasma-wave-*.js', route => {
       requested++;
       return scenario === 'unavailable-chunk' ? route.abort('failed') : route.continue();
     });
     await page.goto(`${base}/login?reason=session-expired`, { waitUntil: 'networkidle' });
-    const login = page.getByRole('button', { name: /sign in with keycloak/i });
+    const login = page.getByRole('button', { name: /continue to sign in/i });
     await login.waitFor();
     assert.equal(await login.isEnabled(), true, `${scenario}: sign-in remains available`);
     assert.equal(await page.getByText('Unexpected Application Error!', { exact: true }).count(), 0);
     if (scenario === 'normal') {
-      await page.locator('.cnp-space-galaxy canvas').waitFor();
-      assert.ok(requested > 0, 'Galaxy was actually loaded');
+      await page.locator('.auth-plasma canvas').waitFor();
+      assert.ok(requested > 0, 'Plasma was actually loaded');
     } else if (scenario === 'unavailable-chunk') {
-      assert.ok(requested > 0, 'Galaxy import was actually blocked');
-      assert.equal(await page.locator('.cnp-space-galaxy').count(), 0);
+      assert.ok(requested > 0, 'Plasma import was actually blocked');
+      assert.equal(await page.locator('.auth-plasma canvas').count(), 0);
     } else {
-      assert.equal(requested, 0, 'Reduced motion must not load Galaxy');
+      assert.equal(requested, 0, `${scenario}: hidden animation must not load`);
     }
-    assert.equal(await page.locator('.cnp-space-shade').count(), 1);
+    assert.equal(await page.locator('.auth-plasma').count(), 1);
     console.log(`PASS: ${scenario}`);
     await context.close();
   }
