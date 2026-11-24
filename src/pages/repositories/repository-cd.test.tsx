@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { defaultLandingZonePreview, saveLandingZonePreview } from "@/lib/landing-zone-preview";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +19,7 @@ vi.mock("@/services/repository.service", () => ({
 vi.mock("@/services/container-registry.service", () => ({
   containerRegistryService: { list: vi.fn().mockResolvedValue({ items: [] }) },
 }));
-vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
+vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn(), prepare: vi.fn() } }));
 vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn(), resolveImage: vi.fn() } }));
 vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
 vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
@@ -76,14 +77,37 @@ describe("CD integration across MCP and database provisioning", () => {
 
   it("simulates Dev locally and keeps real deployment actions in Prod", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Dev · simulation" }));
-    fireEvent.click(screen.getByRole("button", { name: "Simulate deployment" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Simulation completed for cluster");
+    fireEvent.click(await screen.findByRole("button", { name: "Dev" }));
+    expect(screen.getByRole("button", { name: "Dev", pressed: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare deployment" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Deployment prepared for cluster.");
+    expect(screen.getByRole("button", { name: "Prepare deployment" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Generate CD preview/i })).toBeNull();
     expect(cdService.preview).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Prod · live target" }));
+    expect(mcpService.prepare).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Prod" }));
     expect((await screen.findAllByRole("button", { name: /Generate CD preview/i })).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Simulation completed/)).toBeNull();
+    expect(screen.queryByText(/Deployment prepared for cluster/)).toBeNull();
+  });
+
+  it.each([
+    ["99.5", ["Azure · AKS"]],
+    ["99.9", ["Azure · AKS", "AWS · EKS"]],
+    ["99.99", ["Azure · AKS", "AWS · EKS", "Private · k3s"]],
+  ] as const)("displays the %s project targets without creating extra deployment requests", async (sla, names) => {
+    saveLandingZonePreview("user", "project", { ...defaultLandingZonePreview(), availability: sla });
+    const cd = requirements("azure");
+    cd.cloud_targets.unshift({ ...requirements("aws").cloud_targets[0], id: "aws-target" });
+    vi.mocked(cdService.requirements).mockResolvedValue(cd);
+    renderPage();
+    const list = await screen.findByRole("list", { name: "Cloud targets" });
+    expect(within(list).getAllByRole("listitem").map(item => item.textContent)).toEqual(names);
+    expect(screen.queryByRole("combobox", { name: /cloud target/i })).toBeNull();
+    const generate = screen.getAllByRole("button", { name: "Generate CD preview" })[0];
+    await waitFor(() => expect(generate).toBeEnabled());
+    fireEvent.click(generate);
+    await waitFor(() => expect(cdService.preview).toHaveBeenCalledTimes(1));
+    expect(cdService.preview).toHaveBeenCalledWith("repo", expect.objectContaining({ cloud_target_id: "target" }));
   });
 
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {
