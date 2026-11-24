@@ -41,6 +41,11 @@ export const mcpService = {
   deploymentPermissions: (repositoryId: string, signal?: AbortSignal) =>
     api.get<GithubDeploymentPermissions>(`/repositories/${repositoryId}/deployment-permissions`, { signal }),
   connections: () => api.get<{ items: Connection[] }>("/oauth/connections"),
+  async addConnectionProject(connectionId: string, projectId: string) {
+    return api.put<void>(`/oauth/connections/${connectionId}/projects/${projectId}`, undefined, {
+      headers: { "X-CNP-CSRF": await csrf() },
+    });
+  },
   async revoke(id: string) { return api.delete(`/oauth/connections/${id}`, { headers: { "X-CNP-CSRF": await csrf() } }); },
   async logout() {
     try { await browserPost("/auth/browser-logout"); } finally { browserSession = null; }
