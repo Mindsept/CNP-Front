@@ -18,7 +18,7 @@ vi.mock("@/services/repository.service", () => ({
 vi.mock("@/services/container-registry.service", () => ({
   containerRegistryService: { list: vi.fn().mockResolvedValue({ items: [] }) },
 }));
-vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn() } }));
+vi.mock("@/services/mcp.service", () => ({ mcpService: { policy: vi.fn(), prepare: vi.fn() } }));
 vi.mock("@/services/cd.service", () => ({ cdService: { requirements: vi.fn(), list: vi.fn(), preview: vi.fn(), resolveImage: vi.fn() } }));
 vi.mock("@/services/observability.service", () => ({ observabilityService: { list: vi.fn() } }));
 vi.mock("@/services/auth.service", () => ({ authService: { me: vi.fn() } }));
@@ -76,14 +76,17 @@ describe("CD integration across MCP and database provisioning", () => {
 
   it("simulates Dev locally and keeps real deployment actions in Prod", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Dev · simulation" }));
-    fireEvent.click(screen.getByRole("button", { name: "Simulate deployment" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Simulation completed for cluster");
+    fireEvent.click(await screen.findByRole("button", { name: "Dev" }));
+    expect(screen.getByRole("button", { name: "Dev", pressed: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare deployment" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Deployment prepared for cluster.");
+    expect(screen.getByRole("button", { name: "Prepare deployment" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Generate CD preview/i })).toBeNull();
     expect(cdService.preview).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Prod · live target" }));
+    expect(mcpService.prepare).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Prod" }));
     expect((await screen.findAllByRole("button", { name: /Generate CD preview/i })).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Simulation completed/)).toBeNull();
+    expect(screen.queryByText(/Deployment prepared for cluster/)).toBeNull();
   });
 
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {

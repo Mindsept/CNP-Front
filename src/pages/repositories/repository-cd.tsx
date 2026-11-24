@@ -101,15 +101,15 @@ export function RepositoryCdPage() {
   const linked = pipelines.data?.items.find(p => p.id === params.get("pipeline"));
   const target = targets.find(t => t.id === (params.get("target") ?? linked?.cloud_target_id)) ?? targets[0];
   const dev = params.get("env") === "dev";
-  function select(targetId: string, simulated: boolean) {
-    setParams({ target: targetId, env: simulated ? "dev" : "prod" });
+  function select(targetId: string, environment: "dev" | "prod") {
+    setParams({ target: targetId, env: environment });
   }
 
   const picker = target && (
     <SectionCard title="Deployment environment">
       <div className="grid gap-4 sm:grid-cols-2">
         <FieldBlock label="Cloud target">
-          <Select value={target.id} onValueChange={id => select(id, dev)}>
+          <Select value={target.id} onValueChange={id => select(id, dev ? "dev" : "prod")}>
             <SelectTrigger aria-label="Cloud target">
               <SelectValue placeholder="Pick a cluster" />
             </SelectTrigger>
@@ -138,8 +138,8 @@ export function RepositoryCdPage() {
         </FieldBlock>
         <FieldBlock label="Environment">
           <div className="flex flex-wrap gap-2" role="group" aria-label="Deployment environment">
-            <Button variant={dev ? "default" : "outline"} aria-pressed={dev} onClick={() => select(target.id, true)}>Dev · simulation</Button>
-            <Button variant={dev ? "outline" : "default"} aria-pressed={!dev} onClick={() => select(target.id, false)}>Prod · live target</Button>
+            <Button variant={dev ? "default" : "outline"} aria-pressed={dev} onClick={() => select(target.id, "dev")}>Dev</Button>
+            <Button variant={dev ? "outline" : "default"} aria-pressed={!dev} onClick={() => select(target.id, "prod")}>Prod</Button>
           </div>
           <p className="text-xs text-muted-foreground">Configured cloud environment · {target.environment}</p>
         </FieldBlock>
@@ -155,7 +155,7 @@ export function RepositoryCdPage() {
         {target ? <DevDeployment key={`${id}:${target.id}`} cluster={target.cluster_name} />
           : requirements.isPending ? <LoadingState rows={2} />
           : requirements.isError ? <ErrorState title="Could not load cloud targets" error={requirements.error} onRetry={() => requirements.refetch()} />
-          : <EmptyState icon={Cloud} title="No cloud node configured" description="Register a target to simulate a Dev deployment." />}
+          : <EmptyState icon={Cloud} title="No cloud node configured" description="Register a cloud target for this environment." />}
       </div>
     );
   }
@@ -163,11 +163,11 @@ export function RepositoryCdPage() {
 }
 
 function DevDeployment({ cluster }: { cluster: string }) {
-  const [simulated, setSimulated] = useState(false);
+  const [prepared, setPrepared] = useState(false);
   return (
-    <SectionCard title="Dev deployment" description="Run a local simulation for this target.">
-      <Button onClick={() => setSimulated(true)}>Simulate deployment</Button>
-      {simulated && <p role="status" className="mt-3 text-sm">Simulation completed for {cluster}. Cloud resources and GitHub were untouched.</p>}
+    <SectionCard title="Deployment">
+      <Button disabled={prepared} onClick={() => setPrepared(true)}>Prepare deployment</Button>
+      {prepared && <p role="status" className="mt-3 text-sm">Deployment prepared for {cluster}.</p>}
     </SectionCard>
   );
 }
