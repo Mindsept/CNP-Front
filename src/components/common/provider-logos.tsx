@@ -3,6 +3,7 @@ import { Github } from "lucide-react";
 import azureLogo from "@/assets/providers/azure.png";
 import awsLogo from "@/assets/providers/aws.png";
 import gcpLogo from "@/assets/providers/gcp.png";
+import k3sLogo from "@/assets/providers/k3s.png";
 
 interface LogoProps {
   className?: string;
@@ -44,4 +45,8 @@ export function GcpLogo({ className }: LogoProps) {
 /** GHCR uses the GitHub mark. */
 export function GhcrLogo({ className }: LogoProps) {
   return <Github className={className} />;
+}
+
+export function K3sLogo({ className }: LogoProps) {
+  return <img src={k3sLogo} alt="k3s" className={`object-contain ${className ?? ""}`} />;
 }

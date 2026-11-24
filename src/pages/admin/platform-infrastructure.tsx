@@ -21,6 +21,7 @@ import {
   AzureLogo,
   GcpLogo,
   GhcrLogo,
+  K3sLogo,
 } from "@/components/common/provider-logos";
 import { PrivateTargetsPanel } from "@/components/cloud-targets/private-targets-panel";
 import { CloudTargetDialog } from "@/components/cloud-targets/cloud-target-dialog";
@@ -30,9 +31,16 @@ import { containerRegistryService } from "@/services/container-registry.service"
 import { useAuth } from "@/hooks/use-auth";
 import { useToastError } from "@/hooks/use-toast-error";
 import { ApiError } from "@/lib/errors";
-import { formatRelative } from "@/lib/utils";
+import { adminCloudNodeRows } from "./cloud-node-rows";
 import type { CreateCloudTargetInput } from "@/types/cloud-target";
 import type { CreateContainerRegistryInput } from "@/types/container-registry";
+
+const nodeLogos = {
+  azure: <AzureLogo className="h-4 w-4" />,
+  aws: <AwsLogo className="h-4 w-4" />,
+  private: <K3sLogo className="h-4 w-4" />,
+  gcp: <GcpLogo className="h-4 w-4" />,
+};
 
 export function PlatformInfrastructurePage() {
   const { user } = useAuth();
@@ -125,7 +133,7 @@ export function PlatformInfrastructurePage() {
     );
   }
 
-  const nodes = cloudNodesQuery.data?.items ?? [];
+  const nodes = adminCloudNodeRows(cloudNodesQuery.data?.items ?? []);
 
   return (
     <div className="space-y-8">
@@ -223,7 +231,7 @@ export function PlatformInfrastructurePage() {
       {/* Cloud nodes */}
       <SectionCard
         title="Cloud Nodes"
-        description="Global clusters already provisioned and registered from their cnp_cd_contract. New project environments are provisioned from the project deployment flow."
+        description="Global cloud nodes by provider and environment."
         actions={
           <Button onClick={() => setNodeOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -237,7 +245,7 @@ export function PlatformInfrastructurePage() {
             name="Azure AKS"
             subtitle="azure · aks"
             enabled
-            configured={nodes.length > 0}
+            configured={nodes.some((node) => node.provider === "azure" && node.cluster_type === "aks")}
           >
             <Badge variant="success">Enabled</Badge>
           </ProviderCard>
@@ -251,11 +259,14 @@ export function PlatformInfrastructurePage() {
             <Badge variant="success">Enabled</Badge>
           </ProviderCard>
           <ProviderCard
-            logo={<GcpLogo className="h-6 w-6" />}
-            name="Google GKE"
-            subtitle="gcp · gke"
-            comingSoon
-          />
+            logo={<K3sLogo className="h-6 w-6" />}
+            name="k3s"
+            subtitle="private · k3s"
+            enabled
+            configured={nodes.some((node) => node.provider === "private" && node.cluster_type === "k3s")}
+          >
+            <Badge variant="success">Enabled</Badge>
+          </ProviderCard>
         </div>
 
         {storedKeys && storedKeys.length > 0 ? (
@@ -304,11 +315,11 @@ export function PlatformInfrastructurePage() {
           ) : (
             <ul className="divide-y divide-border/60">
               {nodes.map((t) => (
-                <li key={t.id} className="py-4">
+                <li key={t.rowKey} className="py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        {t.provider === "aws" ? <AwsLogo className="h-4 w-4" /> : t.provider === "gcp" ? <GcpLogo className="h-4 w-4" /> : <AzureLogo className="h-4 w-4" />}
+                        {nodeLogos[t.provider]}
                         <p className="text-sm font-semibold text-foreground">
                           {t.name}
                         </p>
@@ -336,7 +347,7 @@ export function PlatformInfrastructurePage() {
                       </dl>
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
-                      Updated {formatRelative(t.updated_at)}
+                      Updated {t.updated}
                     </div>
                   </div>
                 </li>
