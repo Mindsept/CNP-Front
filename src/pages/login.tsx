@@ -46,10 +46,10 @@ export function LoginPage() {
           Sign in
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome to your platform
+          Your workspace awaits.
         </h1>
         <p className="text-sm text-muted-foreground">
-          Continue to the CNP identity provider. Keycloak handles your password and authenticator code securely.
+          One place for your code, deployments and observability.
         </p>
       </div>
 
@@ -71,7 +71,7 @@ export function LoginPage() {
         <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/50 p-4">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="space-y-1">
-            <p className="text-sm font-medium">Secure sign-in with Keycloak</p>
+            <p className="text-sm font-medium">Your CNP account</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
               Use your CNP username, password and authenticator to sign in.
             </p>
