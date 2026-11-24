@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
+import type { AnalysisJob } from "@/types/job";
 import type { Paginated } from "@/types/api";
 import type {
   AnalyzeRepositoryInput,
@@ -39,6 +40,10 @@ export const repositoryService = {
       `/repositories/${repositoryId}/analyze`,
       input,
     );
+  },
+
+  analysisJob(repositoryId: string): Promise<AnalysisJob | null> {
+    return api.get<AnalysisJob | null>(`/repositories/${repositoryId}/analysis/job`);
   },
 
   async latestAnalysis(repositoryId: string): Promise<RepositoryAnalysis | null> {
