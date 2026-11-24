@@ -20,6 +20,9 @@ describe("admin cloud node list", () => {
       ["aws", "demo-dev"], ["private", "demo-prod"], ["private", "demo-dev"],
     ]);
     expect(rows[0].updated).toBe(formatRelative(aks.updated_at));
+    expect(rows.slice(1).map((row) => row.config.resource_group)).toEqual([
+      "rg-cnp-dev", "rg-cnp-eks-prod", "rg-cnp-eks-dev", "rg-cnp-k3s-prod", "rg-cnp-k3s-dev",
+    ]);
     const time = new Intl.RelativeTimeFormat(undefined, { numeric: "always" });
     expect(rows[1].updated).toBe(time.format(-24, "hour"));
     const ages = Array.from({ length: 14 }, (_, offset) => time.format(-10 - offset, "hour"));
