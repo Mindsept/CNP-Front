@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 
@@ -16,12 +16,11 @@ export function LoginPage() {
 
   const next = safeReturnTo(params.get("next"));
   const sessionExpired = params.get("reason") === "session-expired";
-  const started = useRef(false);
   const visibleSignInError = signInError ?? (!submitting && !isIdentityAuthenticated && error
     ? "Secure sign-in could not be started. Check that Keycloak is available, then try again."
     : null);
 
-  const handleLogin = useCallback(async () => {
+  async function handleLogin() {
     setSignInError(null);
     setSubmitting(true);
     try {
@@ -34,13 +33,7 @@ export function LoginPage() {
       // and resolves the promise, so catch alone cannot release this button.
       setSubmitting(false);
     }
-  }, [login, next, onError]);
-
-  useEffect(() => {
-    if (started.current || isLoading || isAuthenticated || isIdentityAuthenticated || sessionExpired) return;
-    started.current = true;
-    void handleLogin();
-  }, [isLoading, isAuthenticated, isIdentityAuthenticated, sessionExpired, handleLogin]);
+  }
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to={next} replace />;
@@ -53,10 +46,10 @@ export function LoginPage() {
           Sign in
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Your workspace awaits.
+          Welcome to your platform
         </h1>
         <p className="text-sm text-muted-foreground">
-          One place for your code, deployments and observability.
+          Continue to the CNP identity provider. Keycloak handles your password and authenticator code securely.
         </p>
       </div>
 
@@ -78,9 +71,9 @@ export function LoginPage() {
         <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/50 p-4">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="space-y-1">
-            <p className="text-sm font-medium">Your CNP account</p>
+            <p className="text-sm font-medium">Secure sign-in with Keycloak</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Opening your secure login. Use your username, password and authenticator to continue.
+              Use your CNP username, password and authenticator to sign in.
             </p>
           </div>
         </div>
@@ -92,7 +85,7 @@ export function LoginPage() {
           size="lg"
           onClick={() => void handleLogin()}
         >
-          Sign in with Keycloak
+          Continue to sign in
           {!submitting ? <ArrowRight className="h-4 w-4" /> : null}
         </Button>
       </div>

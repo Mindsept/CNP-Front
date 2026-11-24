@@ -1,22 +1,9 @@
-import { Component, lazy, Suspense, type PropsWithChildren } from "react";
+import { lazy, Suspense } from "react";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { AnimationBoundary } from "./animation-boundary";
 import "./space.css";
 const Galaxy = lazy(() => import("./react-bits/Galaxy"));
 const LightTunnel = lazy(() => import("./react-bits/LightTunnel"));
-
-// Decorative effects must not take down sign-in or the authenticated workspace
-// when a chunk cannot be fetched or WebGL initialization fails.
-class AnimationBoundary extends Component<PropsWithChildren, { failed: boolean }> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
 
 export function SpaceBackground({ tunnel = false }: { tunnel?: boolean }) {
   const reduced = useReducedMotion();
