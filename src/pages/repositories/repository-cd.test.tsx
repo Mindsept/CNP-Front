@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { defaultLandingZonePreview, saveLandingZonePreview } from "@/lib/landing-zone-preview";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -87,6 +88,26 @@ describe("CD integration across MCP and database provisioning", () => {
     fireEvent.click(screen.getByRole("button", { name: "Prod" }));
     expect((await screen.findAllByRole("button", { name: /Generate CD preview/i })).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Deployment prepared for cluster/)).toBeNull();
+  });
+
+  it.each([
+    ["99.5", ["Azure · AKS"]],
+    ["99.9", ["Azure · AKS", "AWS · EKS"]],
+    ["99.99", ["Azure · AKS", "AWS · EKS", "Private · k3s"]],
+  ] as const)("displays the %s project targets without creating extra deployment requests", async (sla, names) => {
+    saveLandingZonePreview("user", "project", { ...defaultLandingZonePreview(), availability: sla });
+    const cd = requirements("azure");
+    cd.cloud_targets.unshift({ ...requirements("aws").cloud_targets[0], id: "aws-target" });
+    vi.mocked(cdService.requirements).mockResolvedValue(cd);
+    renderPage();
+    const list = await screen.findByRole("list", { name: "Cloud targets" });
+    expect(within(list).getAllByRole("listitem").map(item => item.textContent)).toEqual(names);
+    expect(screen.queryByRole("combobox", { name: /cloud target/i })).toBeNull();
+    const generate = screen.getAllByRole("button", { name: "Generate CD preview" })[0];
+    await waitFor(() => expect(generate).toBeEnabled());
+    fireEvent.click(generate);
+    await waitFor(() => expect(cdService.preview).toHaveBeenCalledTimes(1));
+    expect(cdService.preview).toHaveBeenCalledWith("repo", expect.objectContaining({ cloud_target_id: "target" }));
   });
 
   it("blocks AWS reviewed deployment instead of submitting Azure authentication settings", async () => {
