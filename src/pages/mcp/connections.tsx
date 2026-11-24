@@ -55,7 +55,7 @@ function AddProject({ connection }: { connection: Connection }) {
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button disabled={!selected || add.isPending || Boolean(connection.revoked_at)} onClick={() => selected && add.mutate(selected.id)}>
+          <Button disabled={!selected || add.isPending} onClick={() => selected && add.mutate(selected.id)}>
             Autoriser ce projet
           </Button>
         </DialogFooter>
@@ -68,6 +68,7 @@ export function McpConnectionsPage() {
   const queryClient = useQueryClient();
   const error = useToastError();
   const connections = useQuery({ queryKey: ["mcp-connections"], queryFn: mcpService.connections });
+  const activeConnections = connections.data?.items.filter(connection => !connection.revoked_at);
   const revoke = useMutation({
     mutationFn: mcpService.revoke,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mcp-connections"] }),
@@ -77,16 +78,16 @@ export function McpConnectionsPage() {
     <h1 className="text-2xl font-semibold">MCP connections</h1>
     <p>Revocation prevents the remaining operations from executing. Completed effects are preserved.</p>
     {connections.isError && <p role="alert">Connections could not be loaded.</p>}
-    {connections.data?.items.length === 0 && <p>No connections.</p>}
-    {connections.data?.items.map(c => (
+    {activeConnections?.length === 0 && <p>No active MCP connections.</p>}
+    {activeConnections?.map(c => (
       <SectionCard key={c.id} title={c.client_name}
         description={`Created ${new Date(c.created_at).toLocaleString()} · ID ${c.id.slice(0, 8)}`}>
         <p>{c.scopes.join(", ")}</p>
         <p className="my-3">{c.project_ids.length} authorized projects</p>
         <div className="flex flex-wrap gap-2">
-          {!c.revoked_at && <AddProject connection={c} />}
-          <Button variant="destructive" disabled={Boolean(c.revoked_at) || revoke.isPending} onClick={() => revoke.mutate(c.id)}>
-            {c.revoked_at ? "Revoked" : "Revoke connection"}
+          <AddProject connection={c} />
+          <Button variant="destructive" disabled={revoke.isPending} onClick={() => revoke.mutate(c.id)}>
+            Revoke connection
           </Button>
         </div>
       </SectionCard>
