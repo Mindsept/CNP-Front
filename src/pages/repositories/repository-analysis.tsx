@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Microscope, Sparkles } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
@@ -17,15 +16,23 @@ import {
   StackBadge,
 } from "@/components/common/status-badge";
 import { repositoryService } from "@/services/repository.service";
-import { jobService } from "@/services/job.service";
+import { useAuth } from "@/hooks/use-auth";
 import { useToastError } from "@/hooks/use-toast-error";
 import { formatRelative } from "@/lib/utils";
-import type { Job } from "@/types/job";
+import type { JobStatus } from "@/types/job";
+
+const jobLabels: Record<JobStatus, string> = {
+  queued: "Waiting for a worker",
+  running: "Worker is analyzing this repository",
+  succeeded: "Analysis complete",
+  failed: "Analysis failed",
+};
 
 export function RepositoryAnalysisPage() {
   const { repositoryId } = useParams<{ repositoryId: string }>();
   const id = repositoryId!;
   const qc = useQueryClient();
+  const { user } = useAuth();
   const onError = useToastError();
 
   const repoQuery = useQuery({
@@ -38,36 +45,26 @@ export function RepositoryAnalysisPage() {
     queryFn: () => repositoryService.latestAnalysis(id),
   });
 
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
-
+  const jobKey = ["repository", id, "analysis-job", user?.id] as const;
   const jobQuery = useQuery({
-    queryKey: ["job", activeJobId],
-    queryFn: () => jobService.get(activeJobId!),
-    enabled: Boolean(activeJobId),
-    refetchInterval: (query) => {
-      const data = query.state.data as Job | undefined;
-      if (!data) return 2000;
-      return data.status === "queued" || data.status === "running"
-        ? 2000
-        : false;
+    queryKey: jobKey,
+    queryFn: () => repositoryService.analysisJob(id),
+    enabled: Boolean(user),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: ({ state }) => {
+      const status = state.data?.status;
+      return status === "queued" || status === "running" ? 2000 : false;
     },
   });
-
+  const job = jobQuery.data;
+  const isActive = job?.status === "queued" || job?.status === "running";
   useEffect(() => {
-    const status = jobQuery.data?.status;
-    if (status === "succeeded") {
-      toast.success("Analysis complete");
-      qc.invalidateQueries({ queryKey: ["repository", id] });
-      qc.invalidateQueries({
-        queryKey: ["repository", id, "analysis", "latest"],
-      });
-      setActiveJobId(null);
-    } else if (status === "failed") {
-      toast.error(jobQuery.data?.error || "Analysis failed");
-      setActiveJobId(null);
+    if (job?.status === "succeeded") {
+      void qc.invalidateQueries({ queryKey: ["repository", id], exact: true });
+      void qc.invalidateQueries({ queryKey: ["repository", id, "analysis", "latest"] });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobQuery.data?.status]);
+  }, [id, job?.id, job?.status, qc]);
 
   const analyzeMutation = useMutation({
     mutationFn: () =>
@@ -75,18 +72,15 @@ export function RepositoryAnalysisPage() {
         ref: repoQuery.data?.default_branch ?? "main",
         async: true,
       }),
-    onSuccess: (resp) => {
-      toast.success("Analysis queued");
-      setActiveJobId(resp.job_id);
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: jobKey, exact: true });
     },
     onError: (err) => onError(err, "Could not start analysis"),
   });
 
-  const isAnalyzing =
-    Boolean(activeJobId) &&
-    (jobQuery.data?.status === "queued" ||
-      jobQuery.data?.status === "running" ||
-      jobQuery.isLoading);
+  const busy = analyzeMutation.isPending || isActive;
+  const jobTime = job?.finished_at ?? job?.started_at ?? job?.created_at;
+  const timeLabel = job?.finished_at ? "Finished" : job?.started_at ? "Started" : "Queued";
 
   return (
     <div className="space-y-8">
@@ -101,7 +95,8 @@ export function RepositoryAnalysisPage() {
         actions={
           <Button
             onClick={() => analyzeMutation.mutate()}
-            loading={analyzeMutation.isPending || isAnalyzing}
+            disabled={jobQuery.isLoading}
+            loading={busy}
           >
             <Microscope className="h-4 w-4" />
             Analyze repository
@@ -109,7 +104,10 @@ export function RepositoryAnalysisPage() {
         }
       />
 
-      {activeJobId && jobQuery.data ? (
+      {jobQuery.isError && (
+        <ErrorState title="Could not refresh worker status" error={jobQuery.error} onRetry={() => jobQuery.refetch()} />
+      )}
+      {job ? (
         <Card className="flex items-center justify-between gap-3 border-primary/30 bg-primary/[0.04] p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary ring-1 ring-inset ring-primary/30">
@@ -117,15 +115,15 @@ export function RepositoryAnalysisPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                Analysis job in progress
+                {jobLabels[job.status]}
               </p>
               <p className="text-xs text-muted-foreground">
-                job <span className="font-mono">{activeJobId.slice(0, 8)}</span>{" "}
-                · started {formatRelative(jobQuery.data.started_at)}
+                {timeLabel} {formatRelative(jobTime)} ·{" "}
+                <Link className="underline" to={`/jobs/${job.id}`}>View job</Link>
               </p>
             </div>
           </div>
-          <JobStatusBadge status={jobQuery.data.status} />
+          <JobStatusBadge status={job.status} />
         </Card>
       ) : null}
 
@@ -141,6 +139,8 @@ export function RepositoryAnalysisPage() {
             title="Could not load analysis"
             onRetry={() => analysisQuery.refetch()}
           />
+        ) : !analysisQuery.data && isActive ? (
+          <p className="text-sm text-muted-foreground">Results will appear here when the worker finishes.</p>
         ) : !analysisQuery.data ? (
           <EmptyState
             icon={Microscope}
@@ -149,7 +149,8 @@ export function RepositoryAnalysisPage() {
             action={
               <Button
                 onClick={() => analyzeMutation.mutate()}
-                loading={analyzeMutation.isPending}
+                disabled={jobQuery.isLoading}
+                loading={busy}
               >
                 <Microscope className="h-4 w-4" />
                 Analyze repository

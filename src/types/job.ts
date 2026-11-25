@@ -17,3 +17,5 @@ export interface Job {
   started_at: string | null;
   finished_at: string | null;
 }
+
+export type AnalysisJob = Pick<Job, "id" | "status" | "created_at" | "started_at" | "finished_at" | "error">;
