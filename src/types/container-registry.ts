@@ -7,6 +7,7 @@ export interface ContainerRegistry {
   registry_url: string;
   namespace: string;
   auth_secret_name: string;
+  configured_secret_names?: string[];
   is_default: boolean;
   description?: string | null;
   created_at: string;
