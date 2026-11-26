@@ -225,29 +225,29 @@ export function RepositoryCiPage() {
 
   const requiredSecrets = preview?.required_secrets ?? [];
   const existingSecretKeys = useMemo(
-    () => new Set((secretsQuery.data?.items ?? []).map((s) => s.key)),
+    () => new Set((secretsQuery.data?.items ?? []).filter((s) => s.environment === "ci").map((s) => s.key)),
     [secretsQuery.data],
   );
-  const missingSecrets = (
-    preview?.missing_project_secrets ??
-    requiredSecrets.filter((k) => !existingSecretKeys.has(k))
-  )
-    .filter((key, index, keys) => keys.indexOf(key) === index)
-    // GHCR_TOKEN is provided by the shared registry; don't flag it per project.
-    .filter((key) => !(hasSharedRegistry && key === "GHCR_TOKEN"));
-  const syncSecretsAvailable = (preview?.github_secrets_to_sync?.length ?? 0) > 0;
-  const syncSecretsDefault =
-    syncSecretsAvailable && (hasSharedRegistry || missingSecrets.length === 0);
-
+  const registrySecretKeys = new Set(
+    defaultRegistry?.is_default ? defaultRegistry.configured_secret_names ?? [] : [],
+  );
   const configuredForRequiredSecret = (githubSecretName: string) => {
-    // The shared registry covers GHCR_TOKEN globally.
-    if (hasSharedRegistry && githubSecretName === "GHCR_TOKEN") return true;
     const mapping = preview?.secret_mappings?.find(
       (item) => item.github_secret_name === githubSecretName,
     );
-    if (mapping) return mapping.project_secret_configured;
-    return existingSecretKeys.has(githubSecretName);
+    const source = mapping?.project_secret_key ?? githubSecretName;
+    return registrySecretKeys.has(source) || existingSecretKeys.has(source)
+      || (!secretsQuery.isSuccess && Boolean(mapping?.project_secret_configured));
   };
+  const missingSecrets = [...new Set([
+    ...(preview?.missing_project_secrets ?? []),
+    ...requiredSecrets.filter((key) => !configuredForRequiredSecret(key)).map(
+      (key) => preview?.secret_mappings?.find((item) => item.github_secret_name === key)?.project_secret_key ?? key,
+    ),
+  ])].filter((key) => !registrySecretKeys.has(key) && !existingSecretKeys.has(key));
+  const syncSecretsAvailable = (preview?.github_secrets_to_sync?.length ?? 0) > 0;
+  const syncSecretsDefault =
+    syncSecretsAvailable && missingSecrets.length === 0;
 
   const updateSecretMapping = (
     envName: string,
